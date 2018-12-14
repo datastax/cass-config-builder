@@ -1,0 +1,50 @@
+/*
+ * Copyright DataStax, Inc.
+ *
+ * Please see the included license file for details.
+ */
+
+description = "DataStax Configuration Builder Library"
+
+sourceSets {
+    main {
+        clojure.srcDirs = ['src']
+
+        resources {
+            srcDirs = ['resources']
+        }
+    }
+    test {
+        clojure {
+            it.srcDirs = ['test']
+        }
+        resources {
+            srcDirs = ['test']
+        }
+    }
+    dev {
+        clojure.srcDirs = ['dev']
+    }
+}
+
+configurations {
+    compile {
+        exclude group: 'org.clojure', module: 'tools.trace'
+
+        // exclude commons-logging and log4j as we will be using slf4j
+        // bridges for those libraries
+        exclude group: 'commons-logging', module: 'commons-logging'
+        exclude group: 'log4j', module: 'log4j'
+    }
+    devCompile.extendsFrom testCompile
+}
+
+dependencies {
+    compile "org.clojure:core.match:0.3.0-alpha5"
+    compile "org.clojure:core.memoize:0.5.9"
+    compile "slingshot:slingshot:0.12.2"
+    compile "org.yaml:snakeyaml:1.23"
+    compile "cheshire:cheshire:5.8.0"
+
+    testCompile "junit:junit:4.12"
+}
