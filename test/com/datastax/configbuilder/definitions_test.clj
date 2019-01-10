@@ -8,9 +8,8 @@
             [lcm.utils.yaml :as yaml]
             [lcm.utils.version :as version]
             [slingshot.test :refer :all]
+            [com.datastax.configbuilder.test-data :refer [definitions-location]]
             [com.datastax.configbuilder.definitions :refer :all]))
-
-(def test-definitions-directory  "../definitions")
 
 ;; These fields are not in upstream, but we must support them anyway. :(
 (def undocumented-fields #{:disk_access_mode})
@@ -200,7 +199,7 @@
 
 (deftest test-definition-defaults
   (testing "get defaults for cassandra-yaml (for mixing with config profiles)"
-    (let [definition (get-field-metadata test-definitions-directory :cassandra-yaml "4.8.1")
+    (let [definition (get-field-metadata definitions-location :cassandra-yaml "4.8.1")
           defaults (definition-defaults definition)]
 
       (testing "top-level defaults"
@@ -230,7 +229,7 @@
         (is (= "org.apache.cassandra.scheduler.NoScheduler" (:request_scheduler defaults)))
         (is (not (contains? defaults :request_scheduler_options))))))
   (testing "get defaults for dse-yaml"
-    (let [definition (get-field-metadata test-definitions-directory :dse-yaml "5.1.0")
+    (let [definition (get-field-metadata definitions-location :dse-yaml "5.1.0")
           defaults (definition-defaults definition)]
       (testing "top-level defaults"
         (is (= 1000 (:back_pressure_threshold_per_core defaults)))
@@ -261,13 +260,13 @@
 
 (deftest test-get-field-metadata
   (is (map?
-        (get-field-metadata test-definitions-directory :cassandra-yaml "4.8.1")))
+        (get-field-metadata definitions-location :cassandra-yaml "4.8.1")))
   (is (map?
-        (get-field-metadata test-definitions-directory :dse-yaml "4.8.1")))
-  (is (nil? (get-field-metadata test-definitions-directory :cassandra-yaml "4.6.0"))))
+        (get-field-metadata definitions-location :dse-yaml "4.8.1")))
+  (is (nil? (get-field-metadata definitions-location :cassandra-yaml "4.6.0"))))
 
 (deftest test-get-defaults
-  (let [defaults (get-defaults test-definitions-directory "4.8.1")]
+  (let [defaults (get-defaults definitions-location "4.8.1")]
     (is (map? (:cassandra-yaml defaults)))
     (is (map? (:dse-yaml defaults)))))
 
@@ -308,11 +307,11 @@
 (deftest test-get-definitions-file
   (is (.contains (str
                    (get-definitions-file
-                     test-definitions-directory
+                     definitions-location
                      :cassandra-yaml
                      "4.8.0"
                      :field-metadata))
-                 "definitions/cassandra-yaml/dse/cassandra-yaml-dse-4.8.0.edn")))
+                 "definitions/resources/cassandra-yaml/dse/cassandra-yaml-dse-4.8.0.edn")))
 
 (deftest test-get-template-filename
   (is (thrown+?
@@ -324,7 +323,7 @@
 
 (deftest test-get-field-metadata
   (is (not= (get-field-metadata
-              test-definitions-directory
+              definitions-location
               :cassandra-yaml
               "4.8.1")
             "")))
@@ -334,18 +333,18 @@
         [:type :DefinitionException]
         (get-template
           {:datastax-version "4.8.1"
-           :definitions-location test-definitions-directory
+           :definitions-location definitions-location
            :definitions {:cassandra-yaml {:renderer {:renderer-type :yaml}}}}
           :cassandra-yaml)))
   (is (seq (get-template
              {:datastax-version "4.8.1"
-              :definitions-location test-definitions-directory
-              :definitions (get-all-definitions-for-version test-definitions-directory "4.8.1")}
+              :definitions-location definitions-location
+              :definitions (get-all-definitions-for-version definitions-location "4.8.1")}
              :cassandra-env-sh))))
 
 (deftest test-get-all-definitions-for-version
   (testing "all definitions for dse 4.8.0"
-    (let [all-defs (get-all-definitions-for-version test-definitions-directory "4.8.0")]
+    (let [all-defs (get-all-definitions-for-version definitions-location "4.8.0")]
       (is (> (count all-defs) 0))
       (is (contains? all-defs :cassandra-yaml))
       ;; Ensure that a def with a () transform does not appear
@@ -363,7 +362,7 @@
   (let [filenames {:cassandra-yaml "cassandra.yaml"
                    :dse-yaml "dse.yaml"}
         definition
-        (get-field-metadata test-definitions-directory
+        (get-field-metadata definitions-location
                             config-id
                             "4.7.0")
         yaml-string (slurp (str "test/data/configs/dse-4.7.0/" (filenames config-id)))
@@ -410,7 +409,7 @@
 
 (deftest test-dse-4-8-0-dse-yaml-definition
   (let [definition
-        (get-field-metadata test-definitions-directory
+        (get-field-metadata definitions-location
                             :dse-yaml
                             "4.8.0")]
     (is (nil? (-> definition :properties :node_health :fields :enabled)))
@@ -439,7 +438,7 @@
 
         all-transforms-paths
         (map (fn [config-id transforms-filename]
-               (.getCanonicalFile (io/file test-definitions-directory
+               (.getCanonicalFile (io/file definitions-location
                                            (name config-id)
                                            "dse"
                                            transforms-filename)))
@@ -466,7 +465,7 @@
         (map (fn [tuple]
                (let [dse-version (first tuple)
                      config-id (second tuple)]
-                 (config-file-valid? test-definitions-directory config-id dse-version)))
+                 (config-file-valid? definitions-location config-id dse-version)))
              version-id-tuples)
 
         config-valid-by-version-id-tuple
@@ -475,9 +474,9 @@
       (let [transforms-path (get transforms-paths-by-config-id config-id)
             transforms (get transforms-by-config-id config-id)]
         (testing "transforms exist"
-          (is (.isDirectory (io/file test-definitions-directory))
+          (is (.isDirectory (io/file definitions-location))
               (str "Expected the definitions directory to exist and be a directory: "
-                   test-definitions-directory))
+                   definitions-location))
           (is (.isFile (io/file transforms-path))
               (str "Expected the transforms file to exist and be a plain file: "
                    transforms-path)))
@@ -537,7 +536,7 @@
   (let [exclusions #{} ;; exclude these from the checks.
         property-fields (keys (:properties metadata))
         profile-context {:definitions {config-id metadata}
-                         :definitions-location test-definitions-directory
+                         :definitions-location definitions-location
                          :datastax-version version}
         template-file (get-template-filename profile-context config-id)
         template (get-template profile-context config-id)]
@@ -813,7 +812,7 @@
 
 (deftest check-all-definitions
   "Check some properties of the definitions using versions.edn"
-  (let [versions-edn-parsed (get-all-versions test-definitions-directory)
+  (let [versions-edn-parsed (get-all-versions definitions-location)
 
         ;; Moves the OpsCenter 6.0.0 definitions from their
         ;; legacy/backward-compatible location in the map to a "normal"
@@ -832,11 +831,11 @@
                               set
                               (sort-by identity version/version-is-at-least))
         definitions-by-dse-version (->> all-dse-versions
-                                        (map (partial get-all-definitions-for-version test-definitions-directory))
+                                        (map (partial get-all-definitions-for-version definitions-location))
                                         (zipmap all-dse-versions))]
     (doseq [opsc-version all-opsc-versions]
       (let [dse-versions (get-in all-opsc-dse-versions [opsc-version :dse])]
-        (check-transform-versions (get-config-file-ids test-definitions-directory)
+        (check-transform-versions (get-config-file-ids definitions-location)
                                   opsc-version
                                   dse-versions
                                   all-opsc-dse-versions)))
@@ -995,28 +994,28 @@
 
   (testing "config-file-valid?"
     ;; this has [:all]
-    (is (config-file-valid? test-definitions-directory :cassandra-yaml "4.7.1"))
-    (is (config-file-valid? test-definitions-directory :cassandra-yaml "4.8.0"))
-    (is (config-file-valid? test-definitions-directory :cassandra-yaml "5.0.1"))
+    (is (config-file-valid? definitions-location :cassandra-yaml "4.7.1"))
+    (is (config-file-valid? definitions-location :cassandra-yaml "4.8.0"))
+    (is (config-file-valid? definitions-location :cassandra-yaml "5.0.1"))
 
     ;; jvm-options has [:gte 5.1.0]
-    (is (false? (config-file-valid? test-definitions-directory :jvm-options "4.7.1")))
-    (is (false? (config-file-valid? test-definitions-directory :jvm-options "4.8.0")))
-    (is (false? (config-file-valid? test-definitions-directory :jvm-options "5.0.1")))
-    (is (config-file-valid? test-definitions-directory :jvm-options "5.1.0"))
+    (is (false? (config-file-valid? definitions-location :jvm-options "4.7.1")))
+    (is (false? (config-file-valid? definitions-location :jvm-options "4.8.0")))
+    (is (false? (config-file-valid? definitions-location :jvm-options "5.0.1")))
+    (is (config-file-valid? definitions-location :jvm-options "5.1.0"))
 
     ;; hive-site.xml is valid for DSE 4.7.x and 5.1.x,
     ;; but not for 4.8.x or 5.0.x. The definitions for that setup
     ;; are both complex and confusing. Let's assert here that they're
     ;; configured as required.  If this breaks, the most likely
     ;; explanation is a definitions bug.
-    (is (config-file-valid? test-definitions-directory :hive-site-xml "4.7.0"))
-    (is (config-file-valid? test-definitions-directory :hive-site-xml "4.7.5"))
-    (is (false? (config-file-valid? test-definitions-directory :hive-site-xml "4.8.0")))
-    (is (false? (config-file-valid? test-definitions-directory :hive-site-xml "4.8.6")))
-    (is (false? (config-file-valid? test-definitions-directory :hive-site-xml "5.0.1")))
-    (is (false? (config-file-valid? test-definitions-directory :hive-site-xml "5.0.3")))
-    (is (config-file-valid? test-definitions-directory :hive-site-xml "5.1.0")))
+    (is (config-file-valid? definitions-location :hive-site-xml "4.7.0"))
+    (is (config-file-valid? definitions-location :hive-site-xml "4.7.5"))
+    (is (false? (config-file-valid? definitions-location :hive-site-xml "4.8.0")))
+    (is (false? (config-file-valid? definitions-location :hive-site-xml "4.8.6")))
+    (is (false? (config-file-valid? definitions-location :hive-site-xml "5.0.1")))
+    (is (false? (config-file-valid? definitions-location :hive-site-xml "5.0.3")))
+    (is (config-file-valid? definitions-location :hive-site-xml "5.1.0")))
 
   (testing "user_defined type"
     (let [definition
@@ -1075,7 +1074,7 @@
   ;; For each adjacent pair of OPSC version key (such as 6.0.x and 6.1.0), group by the first two
   ;; version places - basically group by major DSE release. If either one has an empty list for
   ;; a given DSE major release, move on. Else, test that the DSE version lists are equal.
-  (let [opsc-versions (:opsc-versions (get-all-versions test-definitions-directory))
+  (let [opsc-versions (:opsc-versions (get-all-versions definitions-location))
         adjacent-versions (->> opsc-versions keys sort
                                (partition 2 1))
         major-version (partial re-find #"^\d+\.\d+")
