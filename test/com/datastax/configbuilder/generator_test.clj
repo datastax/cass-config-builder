@@ -180,7 +180,7 @@
    "Compares the transformed definition file to the original JSON file."
    [base-filename transform-map version]
    (let [transform-data (get transform-map version)
-         file-data (load-definition "../definitions/" base-filename version)]
+         file-data (load-definition "../definitions/resources" base-filename version)]
      (butlast (data/diff transform-data file-data))))
 
 (defn check-all-transforms
