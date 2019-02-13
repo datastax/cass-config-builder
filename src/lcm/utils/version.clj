@@ -39,11 +39,11 @@
   "If the vector is not max-vector-length size,
    then pad it on the end with zeros."
   [original-vector max-vector-length]
-  (let [padding-length (- max-vector-length (count original-vector))
-        padded-vec     (vec (replicate padding-length 0))]
-    (if (= padded-vec 0)
+  (let [padding-length (- max-vector-length (count original-vector))]
+    (if (= padding-length 0)
       original-vector
-      (vec (apply conj original-vector padded-vec)))))
+      (vec (apply conj original-vector
+                  (vec (replicate padding-length 0)))))))
 
 (defn- version-comparator
   "Private function that will return false if the given comparison

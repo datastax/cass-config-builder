@@ -4,10 +4,18 @@
               [clojure.walk :refer [postwalk]]
               [clojure.core.match :refer [match]]
               [clojure.pprint :refer [pprint]]
-              [lcm.utils.edn :as edn]
+              [clojure.edn :as edn]
               [lcm.utils.data :as data]
               [slingshot.slingshot :refer [throw+ try+]]
               [com.datastax.configbuilder.generator :as gen]))
+
+;; DefinitionsData record is intented to hold meta information
+;; related to definitions files.
+;; Caching these records avoids the expense of loading
+;; defintions from disk over and over again.
+(defrecord DefinitionsData [definitions-location
+                            datastax-version
+                            definitions])
 
 (def valid-property-type? #{"int" "float" "string" "boolean" "list" "dict" "user_defined"})
 
@@ -28,7 +36,7 @@
   "Reads all of versions.edn and returns the result as edn"
   [definitions-location]
   (let [versions-file (io/file definitions-location "versions.edn")]
-    (edn/cached-read-string (slurp versions-file))))
+    (edn/read-string (slurp versions-file))))
 
 (defn get-definitions-file-suffix
   [definition-type]
@@ -117,7 +125,7 @@
                             config-file-id
                             product-version
                             :transforms)]
-    (if (nil? transforms-file)
+    (if (or (nil? transforms-file) (not (.exists transforms-file)))
       (throw+ {:type
                :DefinitionException
                :message
@@ -160,6 +168,16 @@
                                  [config-file-id field-metadata]))]
            (into {} (filter #(metadata-valid? (second %))
                             all-files))))
+
+(defn get-definitions-data
+  "Gets a DefinitionsData record for a given version."
+  [definitions-location version]
+  (->DefinitionsData
+   definitions-location
+   version
+   (get-all-definitions-for-version
+    definitions-location
+    version)))
 
 (defn order-transitive-dependencies
   "Orders depends fields such that transitive dependencies (A->B->C) work
@@ -327,7 +345,7 @@
    for the given parameters. This function expects the
    caller to pass in a map containing the datastax-version
    and definitions for that version."
-  [{:keys [datastax-version definitions]} config-key]
+  [{:keys [definitions datastax-version]} config-key]
   (let [field-metadata (get definitions config-key)
         template-name  (get-in field-metadata
                                [:renderer :template])]
@@ -343,17 +361,17 @@
 (defn get-template
   "Get template string for the given parameters. Throws DefinitionException
   if the template cannot be found."
-  [{:keys [datastax-version definitions-location] :as profile-context} config-key]
-  (let [template-filename (get-template-filename profile-context config-key)
-        definitions-directory (build-definitions-directory
-                                definitions-location
-                                config-key)
+  [{:keys [datastax-version definitions-location] :as definitions-data}
+   config-key]
+  (let [template-filename (get-template-filename definitions-data config-key)
+        definitions-directory (build-definitions-directory definitions-location config-key)
         template-file      (io/file definitions-directory template-filename)]
     (if (not (.exists template-file))
       (throw+ {:type :DefinitionException
                :message (str "There is no template definition file for "
                              (name config-key)
-                             " for version " datastax-version)
+                             " for version " datastax-version
+                             ": " template-file " not found.")
                :file-path (str template-file)})
       (slurp template-file))))
 

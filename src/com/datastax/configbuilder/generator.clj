@@ -1,12 +1,11 @@
 (ns com.datastax.configbuilder.generator
   (:require [clojure.pprint :refer [pprint]]
             [clojure.walk :refer [postwalk]]
+            [clojure.edn :as edn]
             [cheshire.core :as json]
             [lcm.utils.data :as data]
-            [lcm.utils.edn :as lcm-edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [clojure.core.memoize :as memo]
             [slingshot.slingshot :refer [throw+ try+]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -236,7 +235,7 @@
     (when-not (.canRead base-file)
       (throw+ {:type :DefinitionException :message (format "Base metadata file does not exist or is not readable: %s" base-file)}))
     (try+
-     (lcm-edn/cached-read-string (slurp base-file))
+     (edn/read-string (slurp base-file))
      (catch Object o
        (throw+ {:type :DefinitionException :message (format "Could not parse EDN file: %s" (.getName base-file))})))))
 
@@ -313,7 +312,7 @@
            (apply concat
                   (apply-transforms
                    (apply array-map
-                          (lcm-edn/cached-read-string
+                          (edn/read-string
                            (slurp transforms-file))))))))
 
 (defn unsweeten-conditional-value
@@ -352,7 +351,7 @@
     ;; see example 1 above.
     :else [{:eq conditional-value}]))
 
-(defn unsweeten-conditionals-uncached
+(defn unsweeten-conditionals
   "Takes the syntax sugar form of all conditionals and expands them."
   [definitions]
   (postwalk (fn [thing]
@@ -362,12 +361,6 @@
                        (unsweeten-conditional-value (:conditional thing)))
                 thing))
             definitions))
-
-(def unsweeten-conditionals
-  "Experimentally, unsweetening conditionals is the most expensive part of
-  definitions generation, accounting for over 50% of our CPU during unit
-  tests. Memoize the process and cache the results for 1 hour."
-  (memo/ttl unsweeten-conditionals-uncached :ttl/threshold 3600000))
 
 (def generate-unsweetened-metadata
   (comp unsweeten-conditionals generate-metadata))

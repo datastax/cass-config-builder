@@ -57,7 +57,9 @@
                      {:a 1
                       :one {:b 2
                             :two {:c 3
-                                  :three {:d 4}}}}))))
+                                  :three {:d 4}}}})))
+  (testing "not a map"
+    (is (= 5 (deep-merge {:a 1} {:b 2} 5)))))
 
 (deftest test-two-level-merge
   (is (= {:a 1
@@ -109,6 +111,9 @@
                       :key3 "val3"
                       :key4 "\"val4\""}))))
 
+(deftest test-format-seq
+  (is (= "f1, f2" (format-seq [:f1 :f2]))))
+
 (deftest test-map-values
   (is (= {:a 2 :b 3 :c 4}
          (map-values inc {:a 1 :b 2 :c 3})))
@@ -132,6 +137,7 @@
                 (as-boolean "foobie"))))
 
 (deftest test-as-int
+  (is (= 5 (as-int (int 5))))
   (is (= 5 (as-int 5)))
   (is (= 1 (as-int true)))
   (is (= 0 (as-int false)))
@@ -206,6 +212,15 @@
     (testing "Returns nil for match and given vector if pred does not match any element"
       (is (= [nil data]
              (extract-item-from-vector-by-pred #{:does-not-exist} data))))))
+
+(deftest test-select-values
+  (is (= [1 2] (select-values {:a 1 :b 2} [:a :b]))))
+
+(deftest test-sanitize-filename
+  (is (= "foo_bar_bazz" (sanitize-filename "foo%bar-bazz"))))
+
+(deftest test-sec->ms
+  (is (= 1000 (sec->ms 1))))
 
 (comment
   (run-tests))

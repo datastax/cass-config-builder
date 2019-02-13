@@ -263,7 +263,9 @@
         (get-field-metadata definitions-location :cassandra-yaml "4.8.1")))
   (is (map?
         (get-field-metadata definitions-location :dse-yaml "4.8.1")))
-  (is (nil? (get-field-metadata definitions-location :cassandra-yaml "4.6.0"))))
+  (is (nil? (get-field-metadata definitions-location :cassandra-yaml "4.6.0")))
+  (is (thrown+? [:type :DefinitionException]
+        (get-field-metadata definitions-location :foo-yaml "4.8.0"))))
 
 (deftest test-get-defaults
   (let [defaults (get-defaults definitions-location "4.8.1")]
@@ -320,13 +322,6 @@
           {:datastax-version "4.8.1"
            :definitions {:cassandra-yaml {:renderer {:renderer-type :yaml}}}}
           :cassandra-yaml))))
-
-(deftest test-get-field-metadata
-  (is (not= (get-field-metadata
-              definitions-location
-              :cassandra-yaml
-              "4.8.1")
-            "")))
 
 (deftest test-get-template
   (is (thrown+?
@@ -839,7 +834,7 @@
                                   opsc-version
                                   dse-versions
                                   all-opsc-dse-versions)))
-    (doseq [dse-version all-dse-versions]
+    (doseq [dse-version (take 1 all-dse-versions)]
       (doseq [[config-id metadata] (get definitions-by-dse-version dse-version)]
         (check-for-ternary-booleans metadata config-id dse-version)
         (check-group-names metadata config-id dse-version)

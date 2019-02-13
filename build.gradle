@@ -45,6 +45,11 @@ dependencies {
     compile "slingshot:slingshot:0.12.2"
     compile "org.yaml:snakeyaml:1.23"
     compile "cheshire:cheshire:5.8.0"
-
+    compile ("selmer:selmer:0.9.7") { // templating lib
+        exclude module: 'hiccups'
+        exclude module: 'cheshire'
+        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
+        exclude group: 'com.fasterxml.jackson.dataformat', module: 'jackson-dataformat-smile'
+    }
     testCompile "junit:junit:4.12"
 }
