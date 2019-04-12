@@ -579,9 +579,12 @@
     (check-depends-at-level (:properties metadata))))
 
 (defn check-conf-paths [metadata config-id version]
-  "This ensures each version has package-path."
+  "This ensures each version has package-path and tarball-path."
   (is (contains? metadata :package-path)
       (format ":package-path is not defined for definition %s v%s"
+              config-id version))
+  (is (contains? metadata :tarball-path)
+      (format ":tarball-path is not defined for definition %s v%s"
               config-id version)))
 
 (defn check-ui-visibility [metadata config-id version]
@@ -788,22 +791,30 @@
       (is def-defaults))))
 
 (defmulti check-file-paths
-          "Makes sure that :package-path is present and correct.
-          :package-path must be absolute."
-          (fn [_ config-key _]
-            (get {:java-setup      :no-file
-                  :package-proxy   :no-file}
-                 config-key config-key)))
+  "Makes sure that :package-path and :tarball-path are present and correct.
+  :package-path must be absolute and :tarball-path must be relative."
+  (fn [_ config-key _]
+    (get {:java-setup      :no-file
+          :package-proxy   :no-file
+          :install-options :no-file}
+         config-key config-key)))
 
 (defmethod check-file-paths :default
-  [{:keys [package-path]} config-key dse-version]
+  [{:keys [package-path tarball-path]} config-key dse-version]
   (testing (format "Testing :package-path for DSE=%s config-key=%s" dse-version config-key)
     (is (.isAbsolute (io/file package-path))
-        (format ":package-path '%s' is not absolute" package-path))))
+        (format ":package-path '%s' is not absolute" package-path)))
+  (testing (format "Testing :tarball-path for DSE=%s config-key=%s" dse-version config-key)
+    (is (and
+         (not (.isAbsolute (io/file tarball-path)))
+         (not (.startsWith tarball-path "./"))
+         (not (.startsWith tarball-path "../")))
+        (format ":tarball-path '%s' is not relative" tarball-path))))
 
 (defmethod check-file-paths :no-file
-  [{:keys [package-path]} _ _]
-  (is (= "" package-path)))
+  [{:keys [package-path tarball-path]} config-key dse-version]
+  (is (= "" package-path))
+  (is (= "" tarball-path)))
 
 (deftest check-all-definitions
   "Check some properties of the definitions using versions.edn"
@@ -1123,3 +1134,15 @@
   (is (= "a.b.c" (key-path->str [:a :b :c])))
   (is (= :a.b.c (key-path->keyword [:a :b :c]))))
 
+(deftest test-use-tarball-defaults
+  (let [all-defs (get-all-definitions-for-version definitions-location "6.0.0")
+        with-tarball (use-tarball-defaults all-defs)
+        check-default (fn [field-path]
+                        ;; field-path is everything up to, but not including, :default_value
+                        (is (= (get-in with-tarball (conj field-path :default_value))
+                               (get-in with-tarball (conj field-path :tarball_default)))))]
+    (doseq [field-path (map (comp vec butlast)
+                            (lcm.utils.data/map-paths
+                             (fn [k _] (= :tarball_default k))
+                             all-defs))]
+      (check-default field-path))))

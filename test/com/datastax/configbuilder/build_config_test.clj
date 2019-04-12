@@ -9,7 +9,7 @@
         (bc/with-defaults (test-data/get-definitions-data "6.0.2")
                           {})]
     ;; Check the total number of config files
-    (is (= 19 (count configs)))
+    (is (= 21 (count configs)))
     ;; Check some random default values
     (is (= 1.0 (get-in configs [:cassandra-yaml :seed_gossip_probability])))))
 
@@ -71,9 +71,13 @@
         built-configs
         (bc/build-configs (test-data/get-definitions-data "6.0.2")
                           {:datacenter-info datacenter-info})]
-    (is (= datacenter-info
+    (is (= (assoc datacenter-info
+                  :cassandra-user "cassandra"
+                  :cassandra-group "cassandra")
            (select-keys (get built-configs :dse-default)
-                        bc/workload-keys)))))
+                        (concat bc/workload-keys
+                                [:cassandra-user
+                                 :cassandra-group]))))))
 
 (deftest test-build-configs-cassandra-rackdc-properties
   (let [datacenter-info {:name "dc1"}
@@ -105,7 +109,8 @@
           enriched-keys #{:cassandra-yaml
                           :cassandra-env-sh
                           :dse-default
-                          :cassandra-rackdc-properties}
+                          :cassandra-rackdc-properties
+                          :dse-in-sh}
           definitions-data (test-data/get-definitions-data "6.0.2")
           config-data-with-defaults (bc/with-defaults definitions-data config-data)
           enriched-config-data (bc/build-configs definitions-data config-data)
@@ -114,7 +119,8 @@
       (doseq [[config-key config-value] unmodified-configs]
         ;; If this fails, an enriched config may have been added. If this is the
         ;; case, add it's config-key to enriched-keys above.
-        (is (= (get config-data-with-defaults config-key) config-value)))
+        (is (= (get config-data-with-defaults config-key) config-value)
+            (str "Expected config to be unmodified, but it has been enriched: " config-key)))
       ;; If this fails and the actual count is...
       ;; a) Greater than expected - a new config-key has likely been added to the config-data map, and
       ;;    that key is not being enriched. Either it should be enriched, or the expected count
@@ -122,7 +128,7 @@
       ;; b) Less than expected - a key that used to be unmodified has either been removed or is
       ;;    now an enriched config. In the former case, decrement the expected count. For the
       ;;    latter, add it's config-key to the enriched-keys set above.
-      (is (= 15 (count unmodified-configs))))))
+      (is (= 16 (count unmodified-configs))))))
 
 (deftest test-build-configs-bad-keys
   ;; What happens when a key exists in config-data for which there is no corresponding key
@@ -153,7 +159,7 @@
                                          :address-yaml   {}})]
     (is (= "/etc/dse/cassandra/cassandra.yaml"
            (get-in built-configs [:node-info :file-paths :cassandra-yaml])))
-    (is (= bc/address-yaml-path
+    (is (= (:package-path bc/address-yaml-paths)
            (get-in built-configs [:node-info :file-paths :address-yaml])))))
 
 (deftest test-get-custom-dirs
@@ -211,3 +217,46 @@
   (is (not (bc/dse-version-60-or-greater? "some-string-7.0")))
   (is (not (bc/dse-version-60-or-greater? nil)))
   (is (not (bc/dse-version-60-or-greater? ""))))
+
+
+(deftest test-fully-qualify-paths
+  (let [definitions-data (test-data/get-definitions-data)
+        config-key :cassandra-yaml]
+    (testing "No-op for package installs"
+      (let [config-data {:install-options
+                         {:install-type "package"}
+                         :cassandra-yaml
+                         {:data_file_directories ["/var/data1" "/var/data2"]
+                          :commitlog_directory "/var/commitlog"
+                          :client_encryption_options
+                          {:enabled true
+                           :keystore "/etc/dse/keystore"}}}
+            result (bc/fully-qualify-paths definitions-data config-key config-data)]
+        (is (= result config-data)
+            "Should not modify paths for package install")))
+    (testing "Tarball installs"
+      (let [config-data {:install-options
+                         {:install-type "tarball"
+                          :install-directory "/opt/dse"}
+                         :cassandra-yaml
+                         {:data_file_directories ["var/data1" "var/data2" "/var/data3"]
+                          :commitlog_directory "var/commitlog"
+                          :client_encryption_options
+                          {:enabled true
+                           :keystore "etc/dse/keystore"
+                           :truststore "/etc/dse/truststore"}}}
+            result (bc/fully-qualify-paths definitions-data config-key config-data)]
+        (is (= ["/opt/dse/var/data1"
+                "/opt/dse/var/data2"
+                "/var/data3"]
+               (get-in result [:cassandra-yaml :data_file_directories]))
+            "Should fully-qualify relative paths in vectors")
+        (is (= "/opt/dse/var/commitlog"
+               (get-in result [:cassandra-yaml :commitlog_directory]))
+            "Should fully-qualify relative directory paths")
+        (is (= "/opt/dse/etc/dse/keystore"
+               (get-in result [:cassandra-yaml :client_encryption_options :keystore]))
+            "Should fully-qualify relative file paths")
+        (is (= "/etc/dse/truststore"
+               (get-in result [:cassandra-yaml :client_encryption_options :truststore]))
+            "Should not transform paths that are already absolute")))))

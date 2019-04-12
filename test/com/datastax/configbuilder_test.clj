@@ -46,4 +46,4 @@
                (get-in cassandra-yaml [:contents :listen_address])))
         (is (.contains (:rendered-contents cassandra-yaml)
                        "disk_access_mode: foo"))
-        (is (= 19 (count output)))))))
+        (is (= 20 (count output)))))))

@@ -11,6 +11,8 @@
 
 (def definitions-location "../definitions/resources")
 
+(def default-dse-version "6.0.0")
+
 (defn- load-definitions-data
   [definitions-datas datastax-version]
   (if (contains? definitions-datas datastax-version)
@@ -29,9 +31,11 @@
 
 (defn get-definitions-data
   "Gets a cached definitions-data map for the given dse version"
-  [datastax-version]
-  (get (swap! definitions-datas load-definitions-data datastax-version)
-       datastax-version))
+  ([datastax-version]
+   (get (swap! definitions-datas load-definitions-data datastax-version)
+        datastax-version))
+  ([]
+   (get-definitions-data default-dse-version)))
 
 (defn reset-definitions-datas
   "Clears the builder state map and will force the next

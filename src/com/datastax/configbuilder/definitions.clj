@@ -27,7 +27,7 @@
                   :render-without-quotes :fields :summary_fields :render_as
                   :format :readonly :static_constant :suppress-equal-sign
                   :is_directory :exclude-from-template-iterables
-                  :is_file})
+                  :is_file :tarball_default})
 
 ;; Filters dependent fields. Accepts a map-entry of [field-name field-metadata].
 (def dependent-field? (comp :depends second))
@@ -336,6 +336,26 @@
                  :when field-metadata]
              [config-file-id
               (definition-defaults field-metadata)])))
+
+(defn use-tarball-defaults
+  "Any field which has a :tarball_default will have that value copied
+  to the :default_value. Input is a map of config-key -> definitions."
+  [all-defs]
+  (let [property-paths-with-tarball-defaults
+        (data/map-paths (fn [k _] (= :tarball_default k))
+                        all-defs)]
+    (reduce (fn [defs property-path]
+              (assoc-in defs
+                        ;; Replace default value...
+                        (conj property-path :default_value)
+                        ;; With tarball default
+                        (get-in defs (conj property-path :tarball_default))))
+            all-defs
+            ;; butlast will give us the path to the map that contains the default
+            ;; by removing :tarball_default from the end
+            ;; we also need it as a vector so we can conj :default_value onto the end
+            ;; in the reducer.
+            (map (comp vec butlast) property-paths-with-tarball-defaults))))
 
 (defn get-template-filename
   "Get the filename of the template file for the given

@@ -1,7 +1,8 @@
 (ns com.datastax.configbuilder.build-config
   (:require [com.datastax.configbuilder.definitions :as d]
             [slingshot.slingshot :refer [throw+]]
-            [lcm.utils.data :as data]))
+            [lcm.utils.data :as data]
+            [clojure.java.io :as io]))
 
 ;; The input config-data will contain some model-info. These contain
 ;; data that is not defined in the definitions, such as listen_address.
@@ -133,9 +134,33 @@
     data/as-int
     (select-keys datacenter workload-keys)))
 
+(defn- get-dse-run-as
+  "Returns a vector of the [user, group] that cassandra should run as.
+  This information comes from the install-options config."
+  [config-data]
+  (let [{:keys [install-type install-privileges run-dse-as-user run-dse-as-group]}
+        (get config-data :install-options {})]
+    (if (and (= "tarball" install-type) (= "root" install-privileges))
+      [(or run-dse-as-user "cassandra") (or run-dse-as-group "cassandra")]
+      ["cassandra" "cassandra"])))
+
 (defmethod enrich-config :dse-default
   [_ config-key {:keys [datacenter-info] :as config-data}]
-  (update config-data config-key merge (get-workload-vars datacenter-info)))
+  (let [workload-vars (get-workload-vars datacenter-info)
+        run-as-vars (zipmap [:cassandra-user :cassandra-group]
+                            (get-dse-run-as config-data))]
+    (update config-data config-key merge
+            workload-vars
+            run-as-vars)))
+
+(defmethod enrich-config :dse-in-sh
+  ;; This file is the dse-default of non-root tarball installs. It is handled
+  ;; similar to dse-default.
+  [_ config-key {:keys [datacenter-info] :as config-data}]
+  (let [workload-vars (get-workload-vars datacenter-info)
+        cassandra-log-dir (get-in config-data [:install-options :cassandra-log-dir])
+        special-vars (assoc workload-vars :cassandra-log-dir cassandra-log-dir)]
+    (update config-data config-key merge special-vars)))
 
 (defmethod enrich-config :cassandra-rackdc-properties
   [_ config-key {:keys [datacenter-info node-info] :as config-data}]
@@ -144,30 +169,85 @@
            :rack (:rack node-info)}))
 
 (defmulti generate-file-path
-          "Generate the absolute file path for the config."
+  "Generate the absolute file path for the config. Based on instal-type
+  (package v tarball) and related settings."
           (fn [_ config-key _] config-key))
+
+(def tarball? #{"tarball"})
+(def package? #{"package"})
 
 (defmethod generate-file-path :default
   [{:keys [definitions]} config-key config-data]
   ;; Needs to be modified when tarball paths are a thing...
-  (let [{:keys [package-path]}
-        (get definitions config-key)]
-    (if (not (seq package-path))
-      config-data
-      (assoc-in config-data [:node-info :file-paths config-key] package-path))))
+  (let [{:keys [install-type install-directory] :or {install-type "package"}}
+        (get config-data :install-options)
 
-(def address-yaml-path "/var/lib/datastax-agent/conf/address.yaml")
+        {:keys [package-path tarball-path]}
+        (get definitions config-key)
+
+        empty-path? (or (and (package? install-type)
+                             (not (seq package-path)))
+                        (and (tarball? install-type)
+                             (not (seq tarball-path))))]
+    (if empty-path?
+      config-data
+      (assoc-in config-data [:node-info :file-paths config-key]
+                (case install-type
+                  "package" package-path
+                  "tarball" (str (io/file install-directory "dse" tarball-path)))))))
+
+(def address-yaml-paths {:package-path "/var/lib/datastax-agent/conf/address.yaml"
+                         :tarball-path "datastax-agent/conf/address.yaml"})
 
 (defmethod generate-file-path :address-yaml
   [_ config-key config-data]
-  (assoc-in config-data [:node-info :file-paths config-key] address-yaml-path))
-
+  (let [{:keys [install-type install-directory] :or {install-type "package"}}
+        (:install-options config-data)]
+    (assoc-in config-data [:node-info :file-paths config-key]
+              (case install-type
+                "package" (:package-path address-yaml-paths)
+                "tarball" (str (io/file install-directory (:tarball-path address-yaml-paths)))))))
 
 (defn- is-directory?
   "Predicate for map-paths that will filter through definition tree paths
   for fields that have {:is_directory true} in their metadata."
   [k v]
   (and (= :is_directory k) (true? v)))
+
+(defn- is-file?
+  "Predicate for map-paths that will filter through definition tree paths
+  for fields that have {:is_file true} in their metadata."
+  [k v]
+  (and (= :is_file k) (true? v)))
+
+(defn- is-path?
+  "Predicate for map-paths that matches either file or directory fields."
+  [k v]
+  (or (is-directory? k v) (is-file? k v)))
+
+(defn make-absolute
+  "If path is not absolute, prepend it with base-path."
+  [base-path path]
+  (if (.isAbsolute (io/file path))
+    path
+    (str (io/file base-path path))))
+
+(defn tarball-config?
+  "Does this config represent a tarball installation?"
+  [config-data]
+  (= "tarball" (get-in config-data [:install-options :install-type])))
+
+(defn fully-qualify-fn
+  "For tarball installations, paths may need to be fully-qualified by
+  prepending the install-directory.
+  This function takes a map of config data and returns a function that
+  fully qualifies paths."
+  [config-data]
+  (if (tarball-config? config-data)
+    (partial make-absolute (get-in config-data [:install-options :install-directory]))
+
+    ;; don't qualify paths unless it's a tarball install
+    identity))
 
 (defn- get-custom-dirs*
   "Given a config key, returns a reduce fn that compares a field's
@@ -180,14 +260,15 @@
     (let [field-metadata (get-in definitions (cons config-key directory-property-path))
           config-key-path (d/property-path->key-path
                            directory-property-path)
+          fully-qualify (fully-qualify-fn config-data)
 
           ;; if the field type is list, convert it to a set
           as-set (fn [default-value]
                    (if (= "list" (:type field-metadata))
                      ;; convert list to set
-                     (set default-value)
+                     (set (map fully-qualify default-value))
                      ;; wrap single value in set, unless nil
-                     (if (nil? default-value) #{} (hash-set default-value))))
+                     (if (nil? default-value) #{} (hash-set (fully-qualify default-value)))))
           default-values (as-set (:default_value field-metadata))
           actual-values (as-set (get-in config-data
                                         (cons config-key config-key-path)))
@@ -205,6 +286,45 @@
                   {:config-file (get-in definitions [config-key :display-name])
                    :key config-key-path
                    :dirs custom-values})))))
+
+(defn fully-qualify-paths
+  "Ensures that tarball paths are fully qualified."
+  [{:keys [definitions]} config-key config-data]
+  (if (tarball-config? config-data)
+    (let [fully-qualify (fully-qualify-fn config-data)
+
+          definitions-for-config
+          (select-keys (get definitions config-key) [:properties])
+
+          ;; Get the property paths for config properties that represent
+          ;; files and directories.
+          path-matchers
+          (map (comp #(d/preference-path-matcher % definitions-for-config)
+                     butlast)
+               (data/map-paths is-path? definitions-for-config))]
+      ;; As long as the path matches one of the path-matchers predicates,
+      ;; it is a value that needs to be fully-qualified.
+      (if-let [is-path-value? (and (seq path-matchers) (apply some-fn path-matchers))]
+        ;; Reduce over all paths to leaf nodes in the config.
+        ;; The preference path is tested against the path matchers to see if the leaf
+        ;; value needs to be transformed into a fully-qualified path.
+        ;;
+        ;; However, if there are no path-matchers (because there are no path-like values
+        ;; in this particular config), nothing needs to be done.
+        (reduce
+         (fn [config-data preference-path]
+           (if (is-path-value? preference-path)
+             (update-in config-data
+                        (cons config-key preference-path)
+                        fully-qualify)
+             config-data))
+         config-data
+         (data/all-paths (get config-data config-key)))
+        ;; No path-matchers means this config has no directory or file properties
+        config-data))
+
+    ;; Change nothing if it's a package install
+    config-data))
 
 (defn get-custom-dirs
   "For the given config-key, finds user-specified non-default directory
@@ -235,7 +355,17 @@
             (->> config-data
                  (enrich-config definitions-data config-key)
                  (generate-file-path definitions-data config-key)
-                 (get-custom-dirs definitions-data config-key))) config-data (keys config-data)))
+                 (get-custom-dirs definitions-data config-key)
+                 (fully-qualify-paths definitions-data config-key)))
+          config-data (keys config-data)))
+
+(defn prune-config-keys
+  "Remove config keys that are not applicable to the target installation
+  method (package v tarball)."
+  [config-data]
+  (if (tarball-config? config-data)
+    (dissoc config-data :dse-default)
+    (dissoc config-data :dse-in-sh)))
 
 (defn build-configs
   "Enriches the config-data by merging in defaults (where there are no
@@ -246,4 +376,5 @@
   (->> config-data
        (valid-config-keys? definitions-data)
        (with-defaults definitions-data)
+       (prune-config-keys)
        (build-configs* definitions-data)))
