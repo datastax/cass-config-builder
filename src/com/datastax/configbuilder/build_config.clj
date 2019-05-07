@@ -39,18 +39,35 @@
                                 (data/format-seq invalid-keys))})
       config-data)))
 
+(def tarball? #{"tarball"})
+(def package? #{"package"})
+
+(defn tarball-config?
+  "Does this config represent a tarball installation?"
+  [config-data]
+  (tarball? (get-in config-data [:install-options :install-type])))
+
+(defn maybe-use-tarball-defaults
+  "Returns definitions with the default-values potentially swapped out
+  for tarball-defaults in the case of a tarball install-type."
+  [{:keys [definitions]} config-data]
+  (if (tarball-config? config-data)
+    (d/use-tarball-defaults definitions)
+    definitions))
+
 (defn with-defaults
   "Fills in defaults from definitions where there is no user value.
    This will also add in missing config-data keys (for example, if
    :cassandra-env-sh is missing, it will be created with all default
    values)."
-  [{:keys [definitions]} config-data]
-  (reduce
-    (fn [config-data [config-key config-definitions]]
-      (update config-data config-key
-              d/fill-in-defaults config-definitions))
-    config-data
-    definitions))
+  [definitions-data config-data]
+  (let [definitions (maybe-use-tarball-defaults definitions-data config-data)]
+    (reduce
+     (fn [config-data [config-key config-definitions]]
+       (update config-data config-key
+               d/fill-in-defaults config-definitions))
+     config-data
+     definitions)))
 
 (defmulti enrich-config
           "Enriches the config-data for a given config-key with data from the
@@ -140,8 +157,12 @@
   [config-data]
   (let [{:keys [install-type install-privileges run-dse-as-user run-dse-as-group]}
         (get config-data :install-options {})]
-    (if (and (= "tarball" install-type) (= "root" install-privileges))
-      [(or run-dse-as-user "cassandra") (or run-dse-as-group "cassandra")]
+    (if (tarball? install-type)
+      (if (= "root" install-privileges)
+        [(or run-dse-as-user "cassandra") (or run-dse-as-group "cassandra")]
+        ;; Doesn't really make sense for non-root tarballs. We have to use
+        ;; the ssh login user/group.
+        [nil nil])
       ["cassandra" "cassandra"])))
 
 (defmethod enrich-config :dse-default
@@ -173,8 +194,6 @@
   (package v tarball) and related settings."
           (fn [_ config-key _] config-key))
 
-(def tarball? #{"tarball"})
-(def package? #{"package"})
 
 (defmethod generate-file-path :default
   [{:keys [definitions]} config-key config-data]
@@ -204,9 +223,9 @@
   (let [{:keys [install-type install-directory] :or {install-type "package"}}
         (:install-options config-data)]
     (assoc-in config-data [:node-info :file-paths config-key]
-              (case install-type
-                "package" (:package-path address-yaml-paths)
-                "tarball" (str (io/file install-directory (:tarball-path address-yaml-paths)))))))
+              (if (tarball? install-type)
+                (str (io/file install-directory (:tarball-path address-yaml-paths)))
+                (:package-path address-yaml-paths)))))
 
 (defn- is-directory?
   "Predicate for map-paths that will filter through definition tree paths
@@ -231,11 +250,6 @@
   (if (.isAbsolute (io/file path))
     path
     (str (io/file base-path path))))
-
-(defn tarball-config?
-  "Does this config represent a tarball installation?"
-  [config-data]
-  (= "tarball" (get-in config-data [:install-options :install-type])))
 
 (defn fully-qualify-fn
   "For tarball installations, paths may need to be fully-qualified by

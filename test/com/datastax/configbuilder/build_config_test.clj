@@ -5,13 +5,25 @@
             [slingshot.test :refer :all]))
 
 (deftest test-with-defaults
-  (let [configs
-        (bc/with-defaults (test-data/get-definitions-data "6.0.2")
-                          {})]
-    ;; Check the total number of config files
-    (is (= 21 (count configs)))
-    ;; Check some random default values
-    (is (= 1.0 (get-in configs [:cassandra-yaml :seed_gossip_probability])))))
+  (testing "for package installs"
+    (let [configs
+          (bc/with-defaults (test-data/get-definitions-data "6.0.2")
+            {})]
+      ;; Check the total number of config files
+      (is (= 21 (count configs)))
+      ;; Check some random default values
+      (is (= "/var/lib/cassandra/commitlog"
+             (get-in configs [:cassandra-yaml :commitlog_directory])))
+      (is (= 1.0 (get-in configs [:cassandra-yaml :seed_gossip_probability])))))
+  (testing "for tarball installs"
+    (let [configs
+          (bc/with-defaults (test-data/get-definitions-data "6.0.2")
+            {:install-options {:install-type "tarball"}})]
+      ;; Check the total number of config files
+      (is (= 21 (count configs)))
+      ;; Check some random default values
+      (is (= "var/lib/cassandra/commitlog"
+             (get-in configs [:cassandra-yaml :commitlog_directory]))))))
 
 (deftest test-build-configs-cassandra-yaml
   (let [node-info {:name                               "node-1"
