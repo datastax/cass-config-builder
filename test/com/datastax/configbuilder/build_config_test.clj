@@ -2,28 +2,19 @@
   (:require [clojure.test :refer :all]
             [com.datastax.configbuilder.test-data :as test-data]
             [com.datastax.configbuilder.build-config :as bc]
+            [com.datastax.configbuilder.definitions :as d]
             [slingshot.test :refer :all]))
 
 (deftest test-with-defaults
-  (testing "for package installs"
-    (let [configs
-          (bc/with-defaults (test-data/get-definitions-data "6.0.2")
-            {})]
-      ;; Check the total number of config files
-      (is (= 21 (count configs)))
-      ;; Check some random default values
-      (is (= "/var/lib/cassandra/commitlog"
-             (get-in configs [:cassandra-yaml :commitlog_directory])))
-      (is (= 1.0 (get-in configs [:cassandra-yaml :seed_gossip_probability])))))
-  (testing "for tarball installs"
-    (let [configs
-          (bc/with-defaults (test-data/get-definitions-data "6.0.2")
-            {:install-options {:install-type "tarball"}})]
-      ;; Check the total number of config files
-      (is (= 21 (count configs)))
-      ;; Check some random default values
-      (is (= "var/lib/cassandra/commitlog"
-             (get-in configs [:cassandra-yaml :commitlog_directory]))))))
+  (let [configs
+        (bc/with-defaults (test-data/get-definitions-data "6.0.2")
+          {})]
+    ;; Check the total number of config files
+    (is (= 20 (count configs)))
+    ;; Check some random default values
+    (is (= "/var/lib/cassandra/commitlog"
+           (get-in configs [:cassandra-yaml :commitlog_directory])))
+    (is (= 1.0 (get-in configs [:cassandra-yaml :seed_gossip_probability])))))
 
 (deftest test-build-configs-cassandra-yaml
   (let [node-info {:name                               "node-1"
@@ -68,13 +59,21 @@
           (is (every? nil? (map (:cassandra-yaml built-configs) [:rpc_address :broadcast_rpc_address]))))))))
 
 (deftest test-build-configs-cassandra-env-sh
-  (let [built-configs
-        (bc/build-configs (test-data/get-definitions-data "6.0.2")
-                          ;; an empty config should inherit the default :jvm-options and :jmx-port
-                          {})]
-    (is (= 7199
-           (get-in built-configs [:jvm-options :jmx-port])  ;; source
-           (get-in built-configs [:cassandra-env-sh :jmx-port]))))) ;; destination
+  (testing "for package installs"
+    (let [built-configs
+          (bc/build-configs (test-data/get-definitions-data "6.0.2")
+                            ;; an empty config should inherit the default :jvm-options and :jmx-port
+                            {})]
+      (is (= "/var/log/cassandra" (get-in built-configs [:cassandra-env-sh :cassandra-log-dir])))
+      (is (= 7199
+             (get-in built-configs [:jvm-options :jmx-port])  ;; source
+             (get-in built-configs [:cassandra-env-sh :jmx-port]))))) ;; destination
+  (testing "for tarball installs"
+    (let [built-configs
+          (bc/build-configs (test-data/get-definitions-data "6.0.2")
+                            {:install-options {:install-type "tarball"
+                                               :install-directory "/opt/dse"}})]
+      (is (= "/opt/dse/var/log/cassandra" (get-in built-configs [:cassandra-env-sh :cassandra-log-dir]))))))
 
 (deftest test-build-configs-dse-default
   (let [datacenter-info {:graph-enabled 1
@@ -218,7 +217,18 @@
       (is (= #{"/a/b/c" "/d/e/f"}
              (set (get-in config-custom-dirs [:foobie [:blah_dirs] :dirs]))))
       (is (= ["/g/h/i"] (get-in config-custom-dirs [:foobie [:foo_dir] :dirs])))
-      (is (= ["/j/k/l"] (get-in config-custom-dirs [:foobie [:bar_dir] :dirs]))))))
+      (is (= ["/j/k/l"] (get-in config-custom-dirs [:foobie [:bar_dir] :dirs])))))
+  (testing "for tarball installs"
+    (let [definitions-data (update (test-data/get-definitions-data "6.7.2")
+                                   :definitions
+                                   d/use-tarball-defaults)
+          config-custom-dirs
+          (get-in
+           (bc/get-custom-dirs definitions-data
+                               :cassandra-env-sh
+                               {:cassandra-env-sh {:cassandra-log-dir "var/log/cassandra"}})
+           [:node-info :config-custom-dirs])]
+      (is (nil? config-custom-dirs)))))
 
 (deftest test-dse-version-60-or-greater?
   (is (bc/dse-version-60-or-greater? "6.0.0"))

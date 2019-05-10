@@ -50,24 +50,23 @@
 (defn maybe-use-tarball-defaults
   "Returns definitions with the default-values potentially swapped out
   for tarball-defaults in the case of a tarball install-type."
-  [{:keys [definitions]} config-data]
+  [{:keys [definitions] :as definitions-data} config-data]
   (if (tarball-config? config-data)
-    (d/use-tarball-defaults definitions)
-    definitions))
+    (update definitions-data :definitions d/use-tarball-defaults)
+    definitions-data))
 
 (defn with-defaults
   "Fills in defaults from definitions where there is no user value.
    This will also add in missing config-data keys (for example, if
    :cassandra-env-sh is missing, it will be created with all default
    values)."
-  [definitions-data config-data]
-  (let [definitions (maybe-use-tarball-defaults definitions-data config-data)]
-    (reduce
-     (fn [config-data [config-key config-definitions]]
-       (update config-data config-key
-               d/fill-in-defaults config-definitions))
-     config-data
-     definitions)))
+  [{:keys [definitions]} config-data]
+  (reduce
+   (fn [config-data [config-key config-definitions]]
+     (update config-data config-key
+             d/fill-in-defaults config-definitions))
+   config-data
+   definitions))
 
 (defmulti enrich-config
           "Enriches the config-data for a given config-key with data from the
@@ -174,15 +173,6 @@
             workload-vars
             run-as-vars)))
 
-(defmethod enrich-config :dse-in-sh
-  ;; This file is the dse-default of non-root tarball installs. It is handled
-  ;; similar to dse-default.
-  [_ config-key {:keys [datacenter-info] :as config-data}]
-  (let [workload-vars (get-workload-vars datacenter-info)
-        cassandra-log-dir (get-in config-data [:install-options :cassandra-log-dir])
-        special-vars (assoc workload-vars :cassandra-log-dir cassandra-log-dir)]
-    (update config-data config-key merge special-vars)))
-
 (defmethod enrich-config :cassandra-rackdc-properties
   [_ config-key {:keys [datacenter-info node-info] :as config-data}]
   (update config-data config-key merge
@@ -197,7 +187,6 @@
 
 (defmethod generate-file-path :default
   [{:keys [definitions]} config-key config-data]
-  ;; Needs to be modified when tarball paths are a thing...
   (let [{:keys [install-type install-directory] :or {install-type "package"}}
         (get config-data :install-options)
 
@@ -249,6 +238,7 @@
   [base-path path]
   (if (.isAbsolute (io/file path))
     path
+    ;; DSE is installed under the "dse" subdirectory under base-path
     (str (io/file base-path path))))
 
 (defn fully-qualify-fn
@@ -379,7 +369,7 @@
   [config-data]
   (if (tarball-config? config-data)
     (dissoc config-data :dse-default)
-    (dissoc config-data :dse-in-sh)))
+    config-data))
 
 (defn build-configs
   "Enriches the config-data by merging in defaults (where there are no
@@ -387,8 +377,9 @@
    model-info (things that aren't defined in definition files, like
    listen_address), and other special snowflakes like :address-yaml."
   [definitions-data config-data]
-  (->> config-data
-       (valid-config-keys? definitions-data)
-       (with-defaults definitions-data)
-       (prune-config-keys)
-       (build-configs* definitions-data)))
+  (let [definitions-data (maybe-use-tarball-defaults definitions-data config-data)]
+    (->> config-data
+         (valid-config-keys? definitions-data)
+         (with-defaults definitions-data)
+         (prune-config-keys)
+         (build-configs* definitions-data))))
