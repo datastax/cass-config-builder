@@ -60,7 +60,8 @@
 
 (deftest test-build-configs-cassandra-env-sh
   (testing "for package installs"
-    (let [built-configs
+    (let [
+          built-configs
           (bc/build-configs (test-data/get-definitions-data "6.0.2")
                             ;; an empty config should inherit the default :jvm-options and :jmx-port
                             {})]
@@ -69,26 +70,27 @@
              (get-in built-configs [:jvm-options :jmx-port])  ;; source
              (get-in built-configs [:cassandra-env-sh :jmx-port]))))) ;; destination
   (testing "for tarball installs"
-    (let [built-configs
+    (let [datacenter-info {:graph-enabled 1
+                           :spark-enabled 0
+                           :solr-enabled  0}
+          built-configs
           (bc/build-configs (test-data/get-definitions-data "6.0.2")
-                            {:install-options {:install-type "tarball"
+                            {:datacenter-info datacenter-info
+                             :install-options {:install-type "tarball"
                                                :install-directory "/opt/dse"}})]
+      (is (= datacenter-info
+             (select-keys (:cassandra-env-sh built-configs) bc/workload-keys)))
       (is (= "/opt/dse/var/log/cassandra" (get-in built-configs [:cassandra-env-sh :cassandra-log-dir]))))))
 
 (deftest test-build-configs-dse-default
-  (let [datacenter-info {:graph-enabled 1
-                         :spark-enabled 0
-                         :solr-enabled  0}
-        built-configs
+  (let [built-configs
         (bc/build-configs (test-data/get-definitions-data "6.0.2")
-                          {:datacenter-info datacenter-info})]
-    (is (= (assoc datacenter-info
-                  :cassandra-user "cassandra"
-                  :cassandra-group "cassandra")
+                          {})]
+    (is (= {:cassandra-user "cassandra"
+            :cassandra-group "cassandra"}
            (select-keys (get built-configs :dse-default)
-                        (concat bc/workload-keys
-                                [:cassandra-user
-                                 :cassandra-group]))))))
+                        [:cassandra-user
+                         :cassandra-group])))))
 
 (deftest test-build-configs-cassandra-rackdc-properties
   (let [datacenter-info {:name "dc1"}
