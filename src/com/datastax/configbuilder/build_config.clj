@@ -172,6 +172,17 @@
     (update config-data config-key merge
             run-as-vars)))
 
+;; this only applies to tarball and is removed when NOT tarball
+(defmethod enrich-config :datastax-env-sh
+  [_ config-key {:keys [java-setup install-options] :as config-data}]
+  (let [install-directory (:install-directory install-options)
+        manage-java (:manage-java java-setup)
+        java-vendor (:java-vendor java-setup)]
+    (update config-data config-key merge
+            {:manage-java manage-java
+             :install-directory install-directory
+             :java-vendor java-vendor})))
+
 (defmethod enrich-config :cassandra-rackdc-properties
   [_ config-key {:keys [datacenter-info node-info] :as config-data}]
   (update config-data config-key merge
@@ -368,7 +379,7 @@
   [config-data]
   (if (tarball-config? config-data)
     (dissoc config-data :dse-default)
-    config-data))
+    (dissoc config-data :datastax-env-sh) ))
 
 (defn build-configs
   "Enriches the config-data by merging in defaults (where there are no
