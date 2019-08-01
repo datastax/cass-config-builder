@@ -10,7 +10,7 @@
         (bc/with-defaults (test-data/get-definitions-data "6.0.2")
           {})]
     ;; Check the total number of config files
-    (is (= 20 (count configs)))
+    (is (= 21 (count configs)))
     ;; Check some random default values
     (is (= "/var/lib/cassandra/commitlog"
            (get-in configs [:cassandra-yaml :commitlog_directory])))
