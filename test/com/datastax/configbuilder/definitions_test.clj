@@ -475,21 +475,6 @@
           (is (.isFile (io/file transforms-path))
               (str "Expected the transforms file to exist and be a plain file: "
                    transforms-path)))
-        (testing "No patch version uses a basefile"
-          ;; Note: We don't care if a major version uses a transform
-          ;; we just want patch versions to avoid basefiles.
-          (doseq [transform-version (keys transforms)]
-            (let [transform-value (get transforms transform-version)
-                  patch-version (last (split transform-version
-                                             #"\."))]
-              ;; 5.0.1 is a basefile because 5.0.0 isn't valid
-              (when (not (or (= "5.0.1" transform-version)
-                             (= "0" patch-version)))
-                (is (not (string? transform-value))
-                    (format "The transform for patch version %s of config file %s is a base file.  Patch versions should not use base files.  Current-value is: %s"
-                            transform-version
-                            config-id
-                            transform-value))))))
         (testing "Every dse-version has a transform"
           (doseq [dse-version dse-versions]
             (is (not (nil? (get transforms dse-version)))
