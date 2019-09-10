@@ -359,8 +359,8 @@
         definition
         (get-field-metadata definitions-location
                             config-id
-                            "4.7.0")
-        yaml-string (slurp (str "test/data/configs/dse-4.7.0/" (filenames config-id)))
+                            "6.7.0")
+        yaml-string (slurp (str "test/data/configs/dse-6.7.0/" (filenames config-id)))
         yaml-data (yaml/parse yaml-string :keywords true)
         yaml-keys (set (keys yaml-data))
         diffs (data/diff (set (keys (:properties definition))) yaml-keys)]
@@ -398,7 +398,7 @@
         (doseq [[prop-name prop] optional-props]
           (is (not (:required prop)) (format "Property %s should not be marked as required" prop-name)))))))
 
-(deftest test-dse-4-7-0-yaml
+(deftest test-dse-6-7-0-yaml
   (test-yaml :cassandra-yaml #{:seeds :seed_provider :listen_address :rpc_address :commitlog_sync_period_in_ms :cluster_name})
   (test-yaml :dse-yaml #{:max_memory_to_lock_fraction :config_encryption_key_name}))
 
@@ -420,9 +420,8 @@
 (defn check-transform-versions
   "Checks that a list of config-ids each have a transform file and that the
   versions for the transforms align with versions.edn"
-  [config-ids opsc-version dse-versions modified-opsc-dse-versions]
-  (let [
-        ;; Transforms filesnames aren't dependent on version-number, so use a
+  [config-ids opsc-version dse-versions all-opsc-dse-versions]
+  (let [;; Transform filenames aren't dependent on version-number, so use a
         ;; bogus dse version
         all-transforms-filenames
         (map (fn [config-id]
@@ -482,21 +481,15 @@
                         transforms-path
                         dse-version))))
         (testing "Every transform has a versions.edn version"
-          (let [;; This transformation assumes that check-all-definitions has
-                ;; already moved the dse-versions for opscenter 6.0.0 from their
-                ;; legacy backwards-compatible location in the map to be
-                ;; available under the "6.0.0" key with the rest of the modern
-                ;; dse-version definitions.
-                all-dse-versions (->> modified-opsc-dse-versions
+          (let [all-dse-versions (->> all-opsc-dse-versions
                                       vals
                                       (map :dse)
                                       flatten
                                       set)]
             (doseq [transform-version (keys transforms)]
-              ;; DSE 4.7.x is supported on OpsCenter 6.0.x, but not on OpsCenter
-              ;; 6.1.x. This means that not every version of opscenter will make
-              ;; use of every transform. But every transform should be used by
-              ;; SOME version of OpsCenter or it's cruft and should be removed.
+              ;; Not every version of opscenter will make use of every transform.
+              ;; But every transform should be used by SOME version of OpsCenter
+              ;; or it's cruft and should be removed.
               (is (contains? all-dse-versions transform-version)
                   (format (str "Found transform for version %s in %s but "
                                "that version isn't present in versions.edn")
@@ -804,15 +797,8 @@
 (deftest check-all-definitions
   "Check some properties of the definitions using versions.edn"
   (let [versions-edn-parsed (get-all-versions definitions-location)
-
-        ;; Moves the OpsCenter 6.0.0 definitions from their
-        ;; legacy/backward-compatible location in the map to a "normal"
-        ;; spot that we can iterate over without special-cases.
-        legacy-opsc-dse-versions (:dse versions-edn-parsed)
         modern-opsc-dse-versions (:opsc-versions versions-edn-parsed)
-        all-opsc-dse-versions (assoc-in modern-opsc-dse-versions
-                                        ["6.0.0" :dse]
-                                        legacy-opsc-dse-versions)
+        all-opsc-dse-versions modern-opsc-dse-versions
         all-opsc-versions (keys all-opsc-dse-versions)
         all-dse-versions (->> (map (fn [opsc-version]
                                      (get-in all-opsc-dse-versions
@@ -985,23 +971,19 @@
 
   (testing "config-file-valid?"
     ;; this has [:all]
-    (is (config-file-valid? definitions-location :cassandra-yaml "4.7.1"))
     (is (config-file-valid? definitions-location :cassandra-yaml "4.8.0"))
     (is (config-file-valid? definitions-location :cassandra-yaml "5.0.1"))
 
     ;; jvm-options has [:gte 5.1.0]
-    (is (false? (config-file-valid? definitions-location :jvm-options "4.7.1")))
     (is (false? (config-file-valid? definitions-location :jvm-options "4.8.0")))
     (is (false? (config-file-valid? definitions-location :jvm-options "5.0.1")))
     (is (config-file-valid? definitions-location :jvm-options "5.1.0"))
 
-    ;; hive-site.xml is valid for DSE 4.7.x and 5.1.x,
+    ;; hive-site.xml is valid for DSE 5.1.x,
     ;; but not for 4.8.x or 5.0.x. The definitions for that setup
     ;; are both complex and confusing. Let's assert here that they're
     ;; configured as required.  If this breaks, the most likely
     ;; explanation is a definitions bug.
-    (is (config-file-valid? definitions-location :hive-site-xml "4.7.0"))
-    (is (config-file-valid? definitions-location :hive-site-xml "4.7.5"))
     (is (false? (config-file-valid? definitions-location :hive-site-xml "4.8.0")))
     (is (false? (config-file-valid? definitions-location :hive-site-xml "4.8.6")))
     (is (false? (config-file-valid? definitions-location :hive-site-xml "5.0.1")))

@@ -1,5 +1,5 @@
 (ns lcm.utils.version
-  "Logic for working with versions such as: 4.7.0
+  "Logic for working with versions such as: 6.7.0
    This namespace contains functions for comparing versions."
   (:require [clojure.string :as string]))
 

@@ -6,10 +6,10 @@
 
 (deftest test-version-vec
   (testing "from strings"
-    (is (= (version/version-vec "4.7.0.1")
-           [4 7 0 1]))
-    (is (= (version/version-vec "4.7.0")
-           [4 7 0]))
+    (is (= (version/version-vec "6.7.0.1")
+           [6 7 0 1]))
+    (is (= (version/version-vec "6.7.0")
+           [6 7 0]))
     (is (= (version/version-vec "4.8")
            [4 8])))
   (testing "from file"
@@ -38,21 +38,21 @@
          [4 7 1 0])))
 
 (deftest test-version-is-at-least
-  (is (version/version-is-at-least "4.7.0" "4.7.0"))
-  (is (version/version-is-at-least "4.7.0" "4.7.1"))
-  (is (version/version-is-at-least "4.7.1" "4.8.0"))
-  (is (not (version/version-is-at-least "4.7.1" "4.7.0")))
+  (is (version/version-is-at-least "6.7.0" "6.7.0"))
+  (is (version/version-is-at-least "6.7.0" "6.7.1"))
+  (is (version/version-is-at-least "6.7.1" "6.8.0"))
+  (is (not (version/version-is-at-least "6.7.1" "6.7.0")))
   ;;Testing when the version numbers are not the same length
-  (is (not (version/version-is-at-least "4.7.1" "4.7.0.1")))
-  (is (version/version-is-at-least "4.7.0" "4.7.0.1"))
-  (is (version/version-is-at-least "4.7.1.0" "4.7.1"))
-  (is (not (version/version-is-at-least "4.7.1.1" "4.7.1"))))
+  (is (not (version/version-is-at-least "6.7.1" "6.7.0.1")))
+  (is (version/version-is-at-least "6.7.0" "6.7.0.1"))
+  (is (version/version-is-at-least "6.7.1.0" "6.7.1"))
+  (is (not (version/version-is-at-least "6.7.1.1" "6.7.1"))))
 
 (deftest test-version-not-greater-than
-  (is (version/version-not-greater-than "4.7.0" "4.7.0"))
-  (is (not (version/version-not-greater-than "4.7.0" "4.7.1")))
-  (is (version/version-not-greater-than "4.7.1" "4.7.0"))
-  (is (version/version-not-greater-than "4.8.0" "4.7.1")))
+  (is (version/version-not-greater-than "6.7.0" "6.7.0"))
+  (is (not (version/version-not-greater-than "6.7.0" "6.7.1")))
+  (is (version/version-not-greater-than "6.7.1" "6.7.0"))
+  (is (version/version-not-greater-than "6.8.0" "6.7.1")))
 
 (deftest test-version-matches?
   (is (version/version-matches? "6.1.x" "6.1"))

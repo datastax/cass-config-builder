@@ -18,7 +18,7 @@
             <onMismatch>NEUTRAL</onMismatch>
         </filter>
         <encoder>
-            <pattern>%-5level %date{yyyy-MM-dd HH:mm:ss} %c: %msg%n</pattern>
+            <pattern>%-5level %date{ISO8601} %c: %msg%n</pattern>
         </encoder>
     </appender>
 
@@ -28,7 +28,7 @@
             <level>WARN</level>
         </filter>
         <encoder>
-            <pattern>%-5level %date{yyyy-MM-dd HH:mm:ss} %F:%L - %c: %msg%n</pattern>
+            <pattern>%-5level %date{ISO8601} %F:%L - %c: %msg%n</pattern>
         </encoder>
     </appender>
 
@@ -37,5 +37,20 @@
         <appender-ref ref="STDERR" />
     </root>
 
+    <logger name="com.datastax.driver.core.CodecRegistry" level="ERROR"/>
     <logger name="org.eclipse.jetty" level="ERROR"/>
+
+     <!-- Settings to quiet third party logs that are too verbose -->
+    <logger name="org.apache.spark.util.logging.FileAppender" level="OFF"/>
+    <logger name="org.spark_project.jetty" level="WARN"/>
+    <logger name="org.spark_project.jetty.util.component.AbstractLifeCycle" level="ERROR"/>
+    <logger name="org.apache.spark.repl.SparkIMain$exprTyper" level="INFO"/>
+    <logger name="org.apache.spark.repl.SparkILoop$SparkILoopInterpreter" level="INFO"/>
+    <logger name="org.apache.parquet" level="ERROR"/>
+    <logger name="parquet" level="ERROR"/>
+
+    <!-- SPARK-9183: Settings to avoid annoying messages when looking up
+        nonexistent UDFs in SparkSQL with Hive support -->
+    <logger name="org.apache.hadoop.hive.metastore.RetryingHMSHandler" level="FATAL"/>
+    <logger name="org.apache.hadoop.hive.ql.exec.FunctionRegistry" level="ERROR"/>
 </configuration>
