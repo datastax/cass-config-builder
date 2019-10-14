@@ -9,6 +9,7 @@
             [lcm.utils.version :as version]
             [slingshot.test :refer :all]
             [com.datastax.configbuilder.test-data :refer [definitions-location]]
+            [com.datastax.configbuilder.test-helpers :as helper]
             [com.datastax.configbuilder.definitions :refer :all]))
 
 ;; These fields are not in upstream, but we must support them anyway. :(
@@ -199,11 +200,11 @@
 
 (deftest test-definition-defaults
   (testing "get defaults for cassandra-yaml (for mixing with config profiles)"
-    (let [definition (get-field-metadata definitions-location :cassandra-yaml "4.8.1")
+    (let [definition (get-field-metadata definitions-location :cassandra-yaml helper/default-dse-version)
           defaults (definition-defaults definition)]
 
       (testing "top-level defaults"
-        (is (= 32 (:concurrent_writes defaults)))
+        (is (= 2 (:max_hints_delivery_threads defaults)))
         (is (= "stop" (:commit_failure_policy defaults)))
         (is (false? (:cross_node_timeout defaults)))
         (is (= ["/var/lib/cassandra/data"] (:data_file_directories defaults)))
@@ -218,21 +219,22 @@
         (is (not (contains? defaults :commitlog_sync_batch_window_in_ms)))
         (is (= 10000 (:commitlog_sync_period_in_ms defaults)))
 
-        (is (= "org.apache.cassandra.scheduler.NoScheduler" (:request_scheduler defaults)))
-        (is (not (contains? defaults :request_scheduler_id))))
+        (is (= "org.apache.cassandra.cache.OHCProvider" (:row_cache_class_name defaults)))
+        (is (not (contains? defaults :otc_coalescing_window_us))))
 
       (testing "parents and children"
         ;; 2 types of parent. One has parent_options, the other appears to assume the parent field is a boolean.
         (is (not (contains? (:client_encryption_options defaults) :require_client_auth)))
         (is (not (contains? (:client_encryption_options defaults) :truststore)))
         (is (not (contains? (:client_encryption_options defaults) :truststore_password)))
-        (is (= "org.apache.cassandra.scheduler.NoScheduler" (:request_scheduler defaults)))
-        (is (not (contains? defaults :request_scheduler_options))))))
+        (is (= "periodic" (:commitlog_sync defaults)))
+        (is (not (contains? defaults :commitlog_sync_batch_window_in_ms))))))
+
   (testing "get defaults for dse-yaml"
-    (let [definition (get-field-metadata definitions-location :dse-yaml "5.1.0")
+    (let [definition (get-field-metadata definitions-location :dse-yaml helper/default-dse-version)
           defaults (definition-defaults definition)]
       (testing "top-level defaults"
-        (is (= 1000 (:back_pressure_threshold_per_core defaults)))
+        (is (= 1024 (:back_pressure_threshold_per_core defaults)))
         (is (= "off" (:cql_solr_query_paging defaults))))
       (testing "nested defaults"
         (is (true? (-> defaults :cql_slow_log_options :enabled)))
@@ -260,15 +262,15 @@
 
 (deftest test-get-field-metadata
   (is (map?
-        (get-field-metadata definitions-location :cassandra-yaml "4.8.1")))
+        (get-field-metadata definitions-location :cassandra-yaml helper/default-dse-version)))
   (is (map?
-        (get-field-metadata definitions-location :dse-yaml "4.8.1")))
-  (is (nil? (get-field-metadata definitions-location :cassandra-yaml "4.6.0")))
+        (get-field-metadata definitions-location :dse-yaml helper/default-dse-version)))
+  (is (nil? (get-field-metadata definitions-location :cassandra-yaml helper/invalid-dse-version)))
   (is (thrown+? [:type :DefinitionException]
-        (get-field-metadata definitions-location :foo-yaml "4.8.0"))))
+        (get-field-metadata definitions-location :foo-yaml helper/default-dse-version))))
 
 (deftest test-get-defaults
-  (let [defaults (get-defaults definitions-location "4.8.1")]
+  (let [defaults (get-defaults definitions-location helper/default-dse-version)]
     (is (map? (:cassandra-yaml defaults)))
     (is (map? (:dse-yaml defaults)))))
 
@@ -302,24 +304,28 @@
          "cassandra-rackdc-properties-dse-1.2.3.template"))
   (is (= (build-definitions-filename
            :cassandra-yaml
-           "4.8.0"
+           helper/default-dse-version
            :field-metadata)
-         "cassandra-yaml-dse-4.8.0.edn")))
+         (str "cassandra-yaml-dse-"
+              helper/default-dse-version
+              ".edn"))))
 
 (deftest test-get-definitions-file
   (is (.contains (str
                    (get-definitions-file
                      definitions-location
                      :cassandra-yaml
-                     "4.8.0"
+                     helper/default-dse-version
                      :field-metadata))
-                 "definitions/resources/cassandra-yaml/dse/cassandra-yaml-dse-4.8.0.edn")))
+                 (str "definitions/resources/cassandra-yaml/dse/cassandra-yaml-dse-"
+                      helper/default-dse-version
+                      ".edn"))))
 
 (deftest test-get-template-filename
   (is (thrown+?
         [:type :DefinitionException]
         (get-template-filename
-          {:datastax-version "4.8.1"
+          {:datastax-version helper/default-dse-version
            :definitions {:cassandra-yaml {:renderer {:renderer-type :yaml}}}}
           :cassandra-yaml))))
 
@@ -327,26 +333,36 @@
   (is (thrown+?
         [:type :DefinitionException]
         (get-template
-          {:datastax-version "4.8.1"
+          {:datastax-version helper/default-dse-version
            :definitions-location definitions-location
            :definitions {:cassandra-yaml {:renderer {:renderer-type :yaml}}}}
           :cassandra-yaml)))
   (is (seq (get-template
-             {:datastax-version "4.8.1"
+             {:datastax-version helper/default-dse-version
               :definitions-location definitions-location
-              :definitions (get-all-definitions-for-version definitions-location "4.8.1")}
+              :definitions (get-all-definitions-for-version definitions-location helper/default-dse-version)}
              :cassandra-env-sh))))
 
 (deftest test-get-all-definitions-for-version
-  (testing "all definitions for dse 4.8.0"
-    (let [all-defs (get-all-definitions-for-version definitions-location "4.8.0")]
+  (testing "all definitions for default dse version"
+    (let [all-defs (get-all-definitions-for-version definitions-location helper/default-dse-version)]
       (is (> (count all-defs) 0))
       (is (contains? all-defs :cassandra-yaml))
       ;; Ensure that a def with a () transform does not appear
-      (is (not (contains? all-defs :jvm-options)))
-      (is (every?
-            #(every? (set (keys %)) [:renderer :properties :groupings])
-            (vals all-defs))))))
+      (is (not (contains? all-defs :10-statsd-conf)))
+      (let [all-vals (vals all-defs)]
+        (is (every?
+              #(every? (set (keys %)) [:renderer])
+              all-vals)
+            (str "A definition for DSE version " helper/default-dse-version " is missing a renderer."))
+        (is (every?
+              #(every? (set (keys %)) [:properties])
+              all-vals)
+            (str "A definition for DSE version " helper/default-dse-version " is missing properties"))
+        (is (every?
+              #(every? (set (keys %)) [:groupings])
+              all-vals)
+            (str "A definition for DSE version " helper/default-dse-version " is missing groupings"))))))
 
 (defn test-yaml
   "Common test method for cassandra.yaml and dse.yaml"
@@ -402,15 +418,15 @@
   (test-yaml :cassandra-yaml #{:seeds :seed_provider :listen_address :rpc_address :commitlog_sync_period_in_ms :cluster_name})
   (test-yaml :dse-yaml #{:max_memory_to_lock_fraction :config_encryption_key_name}))
 
-(deftest test-dse-4-8-0-dse-yaml-definition
+(deftest test-default-dse-version-dse-yaml-definition
   (let [definition
         (get-field-metadata definitions-location
                             :dse-yaml
-                            "4.8.0")]
+                            helper/default-dse-version)]
     (is (nil? (-> definition :properties :node_health :fields :enabled)))
-    (is (= 2000 (-> definition
+    (is (= 100 (-> definition
                     :properties
-                    :cql_slow_log_options
+                    :solr_slow_sub_query_log_options
                     :fields
                     :threshold_ms
                     :default_value)))))

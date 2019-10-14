@@ -1,5 +1,6 @@
 (ns com.datastax.configbuilder.test-data
-  (:require [com.datastax.configbuilder.definitions :as d]))
+  (:require [com.datastax.configbuilder.definitions :as d]
+            [com.datastax.configbuilder.test-helpers :as helper]))
 
 ;; Test namespaces should primarily make use of the
 ;; get-definitions-data function. This will store the requested
@@ -10,8 +11,6 @@
 ;; call reset-definitions-datas.
 
 (def definitions-location "../definitions/resources")
-
-(def default-dse-version "6.0.0")
 
 (defn- load-definitions-data
   [definitions-datas datastax-version]
@@ -35,7 +34,7 @@
    (get (swap! definitions-datas load-definitions-data datastax-version)
         datastax-version))
   ([]
-   (get-definitions-data default-dse-version)))
+   (get-definitions-data helper/default-dse-version)))
 
 (defn reset-definitions-datas
   "Clears the builder state map and will force the next

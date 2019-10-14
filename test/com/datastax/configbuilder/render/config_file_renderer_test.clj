@@ -1,6 +1,7 @@
 (ns com.datastax.configbuilder.render.config-file-renderer-test
   (:require [com.datastax.configbuilder.render.config-file-renderer :as renderer]
             [com.datastax.configbuilder.test-data :refer [definitions-location]]
+            [com.datastax.configbuilder.test-helpers :as helper]
             [com.datastax.configbuilder.definitions :as d]
             [clojure.string :as str]
             [slingshot.test :refer :all]
@@ -93,8 +94,8 @@
 
 (deftest test-render-spark-alwayson-sql-conf
   (let [result (renderer/render-config-file
-                {:datastax-version "6.0.0"
-                 :definitions (d/get-all-definitions-for-version definitions-location "6.0.0")
+                {:datastax-version helper/default-dse-version
+                 :definitions (d/get-all-definitions-for-version definitions-location helper/default-dse-version)
                  :definitions-location definitions-location}
                 :spark-alwayson-sql-conf
                 {:spark-alwayson-sql-conf
@@ -343,8 +344,8 @@ rm-key1 rm-value1
   (is (thrown+?
        [:type :MissingDefinitions]
        (renderer/render-config-file
-        {:datastax-version "4.8.0"
-         :definitions (d/get-all-definitions-for-version definitions-location "4.8.0")
+        {:datastax-version helper/invalid-dse-version
+         :definitions (d/get-all-definitions-for-version definitions-location helper/invalid-dse-version)
          :definitions-location definitions-location}
         :jvm-options
         {}))))

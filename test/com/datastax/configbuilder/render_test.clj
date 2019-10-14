@@ -1,6 +1,7 @@
 (ns com.datastax.configbuilder.render-test
   (:require [com.datastax.configbuilder.render :as r]
             [com.datastax.configbuilder.test-data :as test-data]
+            [com.datastax.configbuilder.test-helpers :as helper]
             [slingshot.test :refer :all]
             [clojure.test :refer :all]))
 
@@ -34,7 +35,7 @@
                             :key :dse-yaml
                             :dirs ["/var/foo" "/var/bar"]}
           rendered-info (r/render-config
-                         (test-data/get-definitions-data "6.0.2")
+                         (test-data/get-definitions-data helper/default-dse-version)
                          :dse-yaml
                          {:node-info {:file-paths {:dse-yaml "/etc/dse/dse.yaml"}
                                       :config-custom-dirs {:dse-yaml
@@ -68,7 +69,7 @@
     (simple-config-test rendered-info #"use-ssl: true")))
 
 (deftest test-render-config-package-proxy
-  (let [definitions-data (test-data/get-definitions-data "6.0.2")
+  (let [definitions-data (test-data/get-definitions-data helper/default-dse-version)
         rendered-info
         (r/render-config definitions-data :package-proxy
                          {:package-proxy
@@ -84,7 +85,7 @@
   ;; in definitions? The answer - an exception is thrown!
   (let [definitions-data {:definitions {}
                           :definitions-location "/tmp"
-                          :datastax-version "6.0.0"}
+                          :datastax-version helper/default-dse-version}
         config-data {:bad-key {:a 12}}]
     (is (thrown+? [:type :MissingDefinitions]
                   (doall (r/render-configs definitions-data config-data)))))

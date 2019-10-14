@@ -2,6 +2,7 @@
   (:require [com.datastax.configbuilder :as cb]
             [com.datastax.configbuilder.test-data :as test-data]
             [com.datastax.configbuilder.build-config :as bc]
+            [com.datastax.configbuilder.test-helpers :as helper]
             [cheshire.core :as json]
             [clojure.test :refer :all])
   (:import [com.datastax ConfigBuilder]))
@@ -9,7 +10,7 @@
 (deftest test-configbuilder
   (let [builder (ConfigBuilder.
                  test-data/definitions-location
-                 "6.0.2")
+                 helper/default-dse-version)
         config-data
         {:cluster-info (bc/->ClusterInfo
                         "test-cluster"

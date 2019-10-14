@@ -1,14 +1,15 @@
 (ns com.datastax.configbuilder.build-config-test
   (:require [clojure.test :refer :all]
             [com.datastax.configbuilder.test-data :as test-data]
+            [com.datastax.configbuilder.test-helpers :as helper]
             [com.datastax.configbuilder.build-config :as bc]
             [com.datastax.configbuilder.definitions :as d]
             [slingshot.test :refer :all]))
 
 (deftest test-with-defaults
   (let [configs
-        (bc/with-defaults (test-data/get-definitions-data "6.0.2")
-          {})]
+        (bc/with-defaults (test-data/get-definitions-data helper/default-dse-version)
+                          {})]
     ;; Check the total number of config files
     (is (= 21 (count configs)))
     ;; Check some random default values
@@ -39,10 +40,10 @@
           (is (every? nil? (map (:cassandra-yaml built-configs)
                                 [:native_transport_address :native_transport_broadcast_address]))))))
 
-    (testing "cassandra.yaml for DSE 6.0.2"
+    (testing "cassandra.yaml for the default DSE version"
       (let [built-configs
-            (bc/build-configs (test-data/get-definitions-data "6.0.2")
-                              {:cluster-info (assoc cluster-info :datastax-version "6.0.2")
+            (bc/build-configs (test-data/get-definitions-data helper/default-dse-version)
+                              {:cluster-info (assoc cluster-info :datastax-version helper/default-dse-version)
                                :node-info    node-info})]
         (testing "default values"
           (is (= 1.0 (get-in built-configs [:cassandra-yaml :seed_gossip_probability]))))
@@ -62,7 +63,7 @@
   (testing "for package installs"
     (let [
           built-configs
-          (bc/build-configs (test-data/get-definitions-data "6.0.2")
+          (bc/build-configs (test-data/get-definitions-data helper/default-dse-version)
                             ;; an empty config should inherit the default :jvm-options and :jmx-port
                             {})]
       (is (= "/var/log/cassandra" (get-in built-configs [:cassandra-env-sh :cassandra-log-dir])))
@@ -74,7 +75,7 @@
                            :spark-enabled 0
                            :solr-enabled  0}
           built-configs
-          (bc/build-configs (test-data/get-definitions-data "6.0.2")
+          (bc/build-configs (test-data/get-definitions-data helper/default-dse-version)
                             {:datacenter-info datacenter-info
                              :install-options {:install-type "tarball"
                                                :install-directory "/opt/dse"}})]
@@ -84,7 +85,7 @@
 
 (deftest test-build-configs-dse-default
   (let [built-configs
-        (bc/build-configs (test-data/get-definitions-data "6.0.2")
+        (bc/build-configs (test-data/get-definitions-data helper/default-dse-version)
                           {})]
     (is (= {:cassandra-user "cassandra"
             :cassandra-group "cassandra"}
@@ -96,7 +97,7 @@
   (let [datacenter-info {:name "dc1"}
         node-info {:rack "rack1"}
         built-configs
-        (bc/build-configs (test-data/get-definitions-data "6.0.2")
+        (bc/build-configs (test-data/get-definitions-data helper/default-dse-version)
                           {:datacenter-info datacenter-info
                            :node-info       node-info})]
     (is (= {:dc "dc1" :rack "rack1"}
@@ -105,7 +106,7 @@
 (deftest test-build-configs-no-enrichment
   (testing "configs with no enrichment"
     (let [config-data {:cluster-info    {:name             "test-cluster-1"
-                                         :datastax-version "6.0.2"
+                                         :datastax-version helper/default-dse-version
                                          :seeds            "1,2,3"}
                        :datacenter-info {:name          "test-dc-1"
                                          :graph-enabled true
@@ -124,7 +125,7 @@
                           :dse-default
                           :cassandra-rackdc-properties
                           :dse-in-sh}
-          definitions-data (test-data/get-definitions-data "6.0.2")
+          definitions-data (test-data/get-definitions-data helper/default-dse-version)
           config-data-with-defaults (bc/with-defaults definitions-data config-data)
           enriched-config-data (bc/build-configs definitions-data config-data)
           unmodified-configs (apply dissoc enriched-config-data
@@ -147,7 +148,7 @@
   ;; What happens when a key exists in config-data for which there is no corresponding key
   ;; in definitions? The answer - an exception is thrown!
   (let [config-data {:cluster-info    {:name             "test-cluster-1"
-                                       :datastax-version "6.0.2"
+                                       :datastax-version helper/default-dse-version
                                        :seeds            "1,2,3"}
                      :datacenter-info {:name          "test-dc-1"
                                        :graph-enabled true
@@ -162,12 +163,12 @@
                                        :initial_token                      "123XYZ"
                                        :auto_bootstrap                     true}
                      :bad-config {:a 12}}
-        definitions-data (test-data/get-definitions-data "6.0.2")]
+        definitions-data (test-data/get-definitions-data helper/default-dse-version)]
     (is (thrown+? [:type :InvalidConfigKeys]
                   (bc/build-configs definitions-data config-data)))))
 
 (deftest test-build-configs-file-paths
-  (let [built-configs (bc/build-configs (test-data/get-definitions-data "6.0.2")
+  (let [built-configs (bc/build-configs (test-data/get-definitions-data helper/default-dse-version)
                                         {:cassandra-yaml {}
                                          :address-yaml   {}})]
     (is (= "/etc/dse/cassandra/cassandra.yaml"
