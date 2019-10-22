@@ -155,10 +155,9 @@
     (select-keys datacenter workload-keys)))
 
 (defmethod enrich-config :cassandra-env-sh
-  [_ config-key {:keys [jvm-options datacenter-info] :as config-data}]
+  [_ config-key {:keys [jvm-options] :as config-data}]
   (update config-data config-key merge
-          (select-keys jvm-options [:jmx-port])
-          (get-workload-vars datacenter-info)))
+          (select-keys jvm-options [:jmx-port])))
 
 (defn- get-dse-run-as
   "Returns a vector of the [user, group] that cassandra should run as.
@@ -175,10 +174,12 @@
       ["cassandra" "cassandra"])))
 
 (defmethod enrich-config :dse-default
-  [_ config-key config-data]
-  (let [run-as-vars (zipmap [:cassandra-user :cassandra-group]
+  [_ config-key {:keys [datacenter-info] :as config-data}]
+  (let [workload-vars (get-workload-vars datacenter-info)
+        run-as-vars (zipmap [:cassandra-user :cassandra-group]
                             (get-dse-run-as config-data))]
     (update config-data config-key merge
+            workload-vars
             run-as-vars)))
 
 ;; this only applies to tarball and is removed when NOT tarball
