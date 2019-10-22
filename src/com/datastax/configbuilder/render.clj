@@ -28,7 +28,7 @@
 (defn config-keys
   "Extracts only the keys representing configs"
   [config-data]
-  (remove bc/model-info-keys (keys config-data)))
+  (keys config-data))
 
 (defn config-keys-to-render
   "We don't render spark configs unless spark is enabled for the datacenter."
@@ -92,6 +92,25 @@
     (render-config* definitions-data config-key config-data)
     :rendered-contents
     (comp str/trim-newline str/trim)))
+
+(defn render-model-info
+  [config-key config-data]
+  (map->RenderedConfigInfo
+   {:config-key config-key
+    :display-name (str config-key)
+    :contents (get config-data config-key)}))
+
+(defmethod render-config :cluster-info
+  [_ config-key config-data]
+  (render-model-info config-key config-data))
+
+(defmethod render-config :datacenter-info
+  [_ config-key config-data]
+  (render-model-info config-key config-data))
+
+(defmethod render-config :node-info
+  [_ config-key config-data]
+  (render-model-info config-key config-data))
 
 (defn render-configs
   "Renders all configs (with a few exceptions - see config-keys-to-render).

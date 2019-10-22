@@ -10,14 +10,14 @@
                      :spark-env-sh {:a 1}
                      :dse-yaml {:b 2}}]
     (testing "spark not enabled"
-      (is (= '(:dse-yaml)
-             (r/config-keys-to-render config-data))))
+      (is (= #{:dse-yaml :datacenter-info}
+             (set (r/config-keys-to-render config-data)))))
     (testing "spark enabled"
       (is (= #{:spark-env-sh
-               :dse-yaml}
-             (into #{}
-                   (r/config-keys-to-render
-                    (assoc-in config-data [:datacenter-info :spark-enabled] true))))))))
+               :dse-yaml
+               :datacenter-info}
+             (set (r/config-keys-to-render
+                   (assoc-in config-data [:datacenter-info :spark-enabled] true))))))))
 
 (defn simple-config-test
   [rendered-config-info pattern]
