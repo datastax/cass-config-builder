@@ -42,11 +42,19 @@
   (is (version/version-is-at-least "6.7.0" "6.7.1"))
   (is (version/version-is-at-least "6.7.1" "6.8.0"))
   (is (not (version/version-is-at-least "6.7.1" "6.7.0")))
-  ;;Testing when the version numbers are not the same length
-  (is (not (version/version-is-at-least "6.7.1" "6.7.0.1")))
-  (is (version/version-is-at-least "6.7.0" "6.7.0.1"))
-  (is (version/version-is-at-least "6.7.1.0" "6.7.1"))
-  (is (not (version/version-is-at-least "6.7.1.1" "6.7.1"))))
+  (testing "Hotfix version suffix"
+    (is (version/version-is-at-least "6.7.0" "6.7.4-latest")))
+  (testing "When the version number is 2 digits or less"
+    (is (version/version-is-at-least "6.7.0" "6.7"))
+    (is (version/version-is-at-least "6.7" "6.7.0"))
+    (is (version/version-is-at-least "6.7" "6.7-latest"))
+    (is (not (version/version-is-at-least "6.7.0" "6.6")))
+    (is (not (version/version-is-at-least "6.7" "6.6.9"))))
+  (testing "When the version numbers are not the same length"
+    (is (not (version/version-is-at-least "6.7.1" "6.7.0.1")))
+    (is (version/version-is-at-least "6.7.0" "6.7.0.1"))
+    (is (version/version-is-at-least "6.7.1.0" "6.7.1"))
+    (is (not (version/version-is-at-least "6.7.1.1" "6.7.1")))))
 
 (deftest test-version-not-greater-than
   (is (version/version-not-greater-than "6.7.0" "6.7.0"))

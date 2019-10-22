@@ -233,17 +233,6 @@
            [:node-info :config-custom-dirs])]
       (is (nil? config-custom-dirs)))))
 
-(deftest test-dse-version-60-or-greater?
-  (is (bc/dse-version-60-or-greater? "6.0.0"))
-  (is (bc/dse-version-60-or-greater? "7.1.1"))
-  (is (bc/dse-version-60-or-greater? "51.0"))
-  (is (bc/dse-version-60-or-greater? "7.0-fedex"))
-  (is (not (bc/dse-version-60-or-greater? "5.1.1")))
-  (is (not (bc/dse-version-60-or-greater? "some-string-7.0")))
-  (is (not (bc/dse-version-60-or-greater? nil)))
-  (is (not (bc/dse-version-60-or-greater? ""))))
-
-
 (deftest test-fully-qualify-paths
   (let [definitions-data (test-data/get-definitions-data)
         config-key :cassandra-yaml]

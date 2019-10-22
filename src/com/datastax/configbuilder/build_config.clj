@@ -2,7 +2,8 @@
   (:require [com.datastax.configbuilder.definitions :as d]
             [slingshot.slingshot :refer [throw+]]
             [lcm.utils.data :as data]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [lcm.utils.version :as v]))
 
 ;; The input config-data will contain some model-info. These contain
 ;; data that is not defined in the definitions, such as listen_address.
@@ -78,13 +79,6 @@
   ;; default behavior is to do no enrichment
   config-data)
 
-(defn dse-version-60-or-greater?
-  "Given a version string, returns true if the version string is 6.0.0 or
-  greater and false otherwise."
-  [version]
-  (when-let [major-version-string (re-find #"^[0-9]+" (or version ""))]
-    (>= (Integer/parseInt major-version-string) 6)))
-
 (def ^:private pre-60-field-mappings {:native_transport_address           :rpc_address
                                       :native_transport_broadcast_address :broadcast_rpc_address})
 
@@ -94,7 +88,7 @@
   We need to make sure we are using the old names if the version
   is < 6.0."
   [datastax-version fields]
-  (if (dse-version-60-or-greater? datastax-version)
+  (if (v/version-is-at-least "6.0" datastax-version)
     fields
     (reduce (fn [new-fields [from-field-name to-field-name]]
               (dissoc (assoc new-fields to-field-name (get new-fields from-field-name))
@@ -136,6 +130,21 @@
         (update config-key #(apply dissoc % node-private-props))
         ;; Merge the data into :cassandra-yaml
         (update config-key merge additional-cassandra-yaml-fields))))
+
+(defmethod enrich-config :cassandra-env-sh
+  [{:keys [datastax-version]}
+   config-key
+   {:keys [jvm-options jvm-server-options] :as config-data}]
+  (update config-data config-key merge
+          (select-keys
+           ;; Since DSE 6.8, jvm.options has been replaced by jvm-server.options
+           ;; and version-specific files jvm8-server.options and jvm11-server.options
+           ;; Thus, the location of the jmx-port option is now dependent on the
+           ;; DSE version.
+           (if (v/version-is-at-least "6.8" datastax-version)
+             jvm-server-options
+             jvm-options)
+           [:jmx-port])))
 
 (def workload-keys [:graph-enabled :spark-enabled :solr-enabled])
 

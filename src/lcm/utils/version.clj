@@ -3,7 +3,7 @@
    This namespace contains functions for comparing versions."
   (:require [clojure.string :as string]))
 
-(def version-pattern #"\d+\.\d+(\.\d+)*")
+(def version-pattern #"(\d+\.\d+(\.\d+)*)(-.*)?")
 
 (defprotocol Version
   "Extracts a version number as a vector of ints.
@@ -18,7 +18,7 @@
   java.lang.String
   (version-vec [this]
     ;; uses re-matches for strict match - only version strings match
-    (when-let [good-version (first (re-matches version-pattern this))]
+    (when-let [good-version (second (re-matches version-pattern this))]
       (->> (string/split good-version #"\.")
            (map #(Integer/parseInt %))
            (vec))))
