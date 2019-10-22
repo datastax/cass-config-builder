@@ -154,11 +154,6 @@
     data/as-int
     (select-keys datacenter workload-keys)))
 
-(defmethod enrich-config :cassandra-env-sh
-  [_ config-key {:keys [jvm-options] :as config-data}]
-  (update config-data config-key merge
-          (select-keys jvm-options [:jmx-port])))
-
 (defn- get-dse-run-as
   "Returns a vector of the [user, group] that cassandra should run as.
   This information comes from the install-options config."

@@ -71,22 +71,21 @@
              (get-in built-configs [:jvm-options :jmx-port])  ;; source
              (get-in built-configs [:cassandra-env-sh :jmx-port]))))) ;; destination
   (testing "for tarball installs"
-    (let [datacenter-info {:graph-enabled 1
-                           :spark-enabled 0
-                           :solr-enabled  0}
-          built-configs
+    (let [built-configs
           (bc/build-configs (test-data/get-definitions-data helper/default-dse-version)
-                            {:datacenter-info datacenter-info
-                             :install-options {:install-type "tarball"
+                            {:install-options {:install-type "tarball"
                                                :install-directory "/opt/dse"}})]
-      (is (= datacenter-info
-             (select-keys (:cassandra-env-sh built-configs) bc/workload-keys)))
       (is (= "/opt/dse/var/log/cassandra" (get-in built-configs [:cassandra-env-sh :cassandra-log-dir]))))))
 
 (deftest test-build-configs-dse-default
-  (let [built-configs
+  (let [datacenter-info {:graph-enabled 1
+                         :spark-enabled 0
+                         :solr-enabled  0}
+        built-configs
         (bc/build-configs (test-data/get-definitions-data helper/default-dse-version)
-                          {})]
+                          {:datacenter-info datacenter-info})]
+    (is (= datacenter-info
+           (select-keys (:dse-default built-configs) bc/workload-keys)))
     (is (= {:cassandra-user "cassandra"
             :cassandra-group "cassandra"}
            (select-keys (get built-configs :dse-default)
