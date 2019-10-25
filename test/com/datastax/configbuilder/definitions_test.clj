@@ -744,6 +744,17 @@
                   config-id
                   version)))))
 
+(defn check-for-directories-with-descriptions
+  "Checks that every directory field has a description."
+  [metadata config-id version]
+  (doseq [[field-name field-properties] (:properties metadata)]
+    (is (false? (and (= true (:is_directory field-properties))
+                     (nil? (:description field-properties))))
+        (format "is_directory=true field %s does not have description set in config file %s for version %s"
+                field-name
+                config-id
+                version))))
+
 (defn check-group-names
   "Enforce the consistency of capitalization of the group names."
   [metadata config-id version]
@@ -796,8 +807,9 @@
 (defmethod check-file-paths :default
   [{:keys [package-path tarball-path]} config-key dse-version]
   (testing (format "Testing :package-path for DSE=%s config-key=%s" dse-version config-key)
-    (is (.isAbsolute (io/file package-path))
-        (format ":package-path '%s' is not absolute" package-path)))
+    ;; Empty string is valid, see datastax-env-sh-dse-6.0.0.edn
+    (is (or (= "") (.isAbsolute (io/file package-path)))
+        (format ":package-path '%s' is not absolute or the empty string" package-path)))
   (testing (format "Testing :tarball-path for DSE=%s config-key=%s" dse-version config-key)
     (is (and
          (not (.isAbsolute (io/file tarball-path)))
@@ -832,9 +844,10 @@
                                   opsc-version
                                   dse-versions
                                   all-opsc-dse-versions)))
-    (doseq [dse-version (take 1 all-dse-versions)]
+    (doseq [dse-version all-dse-versions]
       (doseq [[config-id metadata] (get definitions-by-dse-version dse-version)]
         (check-for-ternary-booleans metadata config-id dse-version)
+        (check-for-directories-with-descriptions metadata config-id dse-version)
         (check-group-names metadata config-id dse-version)
         (check-for-invalid-attributes metadata config-id dse-version)
         (check-property-types metadata config-id dse-version)
