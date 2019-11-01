@@ -31,21 +31,14 @@
 
 (deftest test-render-config-default
   (testing "YAML renderer"
-    (let [custom-dir-val-1 {:config-file "dse.yaml"
-                            :key :dse-yaml
-                            :dirs ["/var/foo" "/var/bar"]}
-          rendered-info (r/render-config
+    (let [rendered-info (r/render-config
                          (test-data/get-definitions-data helper/default-dse-version)
                          :dse-yaml
-                         {:node-info {:file-paths {:dse-yaml "/etc/dse/dse.yaml"}
-                                      :config-custom-dirs {:dse-yaml
-                                                           {[:data_file-directories]
-                                                            custom-dir-val-1}}}
+                         {:node-info {:file-paths {:dse-yaml "/etc/dse/dse.yaml"}}
                           :dse-yaml {:a 1}})]
       (is (= :dse-yaml (:config-key rendered-info)))
       (is (= "dse.yaml" (:display-name rendered-info)))
       (is (= "/etc/dse/dse.yaml" (:file-path rendered-info)))
-      (is (= custom-dir-val-1 (first (:custom-dirs rendered-info))))
       (is (= {:a 1} (:contents rendered-info)))
       (simple-config-test rendered-info #"a: 1"))))
 

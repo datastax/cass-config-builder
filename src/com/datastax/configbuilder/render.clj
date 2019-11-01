@@ -13,7 +13,6 @@
    display-name                                             ;; This is :display-name from the definitions file.
    file-path                                                ;; The absolute path to the config file on disk.
    defaults                                                 ;; Just the defaults from definitions for this config file.
-   custom-dirs                                              ;; User-specified non-default directory paths for this config file (seq of strings).
    contents                                                 ;; The template-data (or config data, if you prefer) - (:dse-yaml (:configs profile-context))
    rendered-contents                                        ;; The rendered config as a string.
    opscd-agent-version                                      ;; Special field for :address-yaml. Should be nil for all others.
@@ -53,10 +52,6 @@
     {:config-key        config-key
      :display-name      (get-in definitions [config-key :display-name])
      :file-path         (get-in node-info [:file-paths config-key])
-     :custom-dirs       (when-let [custom-dirs (get-in node-info [:config-custom-dirs config-key])]
-                          ;; custom-dirs is a map of [key paths] => {map of custom dir data}
-                          ;; we only need a seq of the values.
-                          (vals custom-dirs))
      :contents          (get config-data config-key)
      :rendered-contents (renderer/render-config-file
                           definitions-data

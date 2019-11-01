@@ -175,62 +175,65 @@
     (is (= (:package-path bc/address-yaml-paths)
            (get-in built-configs [:node-info :file-paths :address-yaml])))))
 
-(deftest test-get-custom-dirs
-  (testing "no user-defined dirs"
-    (is
-      (empty?
+(deftest test-get-configured-paths
+  (let [configured-paths
         (get-in
-          (bc/get-custom-dirs {:definitions
-                               {:foobie
-                                {:display-name "foobie.yaml"
-                                 :properties
-                                               {:blah_dirs {:type          "list"
-                                                            :value_type    "string"
-                                                            :default_value "/blah/default"
-                                                            :is_directory  true}
-                                                :foo_dir   {:type          "string"
-                                                            :default_value "/foo/default"
-                                                            :is_directory  true}
-                                                :bar_dir   {:type "string"}}}}}
-                              :foobie
-                              {:foobie {:bar_dir "/oh/my/dir"}})
-          [:node-info :config-custom-dirs]))))
-  (testing "has user-defined dirs"
-    (let [config-custom-dirs
-          (get-in
-            (bc/get-custom-dirs {:definitions
-                                 {:foobie
-                                  {:display-name "foobie.yaml"
-                                   :properties
-                                                 {:blah_dirs {:type          "list"
-                                                              :value_type    "string"
-                                                              :default_value "/blah/default"
-                                                              :is_directory  true}
-                                                  :foo_dir   {:type          "string"
-                                                              :default_value "/foo/default"
-                                                              :is_directory  true}
-                                                  :bar_dir   {:type         "string"
-                                                              :is_directory true}}}}}
-                                :foobie
-                                {:foobie {:blah_dirs ["/a/b/c" "/d/e/f"]
-                                          :foo_dir   "/g/h/i"
-                                          :bar_dir   "/j/k/l"}})
-            [:node-info :config-custom-dirs])]
-      (is (= #{"/a/b/c" "/d/e/f"}
-             (set (get-in config-custom-dirs [:foobie [:blah_dirs] :dirs]))))
-      (is (= ["/g/h/i"] (get-in config-custom-dirs [:foobie [:foo_dir] :dirs])))
-      (is (= ["/j/k/l"] (get-in config-custom-dirs [:foobie [:bar_dir] :dirs])))))
+         (bc/get-configured-paths
+          {:definitions
+           {:foobie
+            {:display-name "foobie.yaml"
+             :properties
+             {:blah_dirs {:type          "list"
+                          :value_type    "string"
+                          :default_value ["/blah/default"]
+                          :is_directory  true}
+              :foo_dir   {:type          "string"
+                          :default_value "/foo/default"
+                          :is_file  true}
+              :bar_dir   {:type         "string"
+                          :is_directory true}}}}}
+          :foobie
+          {:foobie {:blah_dirs ["/a/b/c" "/d/e/f"]
+                    :foo_dir   "/foo/default"
+                    :bar_dir   "/j/k/l"}})
+         [:node-info :configured-paths])]
+    (is (= 4 (count configured-paths)))
+    (doseq [configured-path configured-paths]
+      (is (= "foobie.yaml" (:config-file configured-path)))
+      (condp = (:key configured-path)
+        [:blah_dirs]
+        (do
+          (is (#{"/a/b/c" "/d/e/f"} (:path configured-path)))
+          (is (:custom? configured-path))
+          (is (:directory? configured-path)))
+
+        [:foo_dir]
+        (do
+          (is (= "/foo/default" (:path configured-path)))
+          (is (false? (:custom? configured-path)))
+          (is (false? (:directory? configured-path))))
+
+        [:bar_dir]
+        (do
+          (is (= "/j/k/l" (:path configured-path)))
+          (is (:custom? configured-path))
+          (is (:directory? configured-path)))
+
+        (do
+          (is (= "Unexpected value" configured-path))))))
   (testing "for tarball installs"
     (let [definitions-data (update (test-data/get-definitions-data "6.7.2")
                                    :definitions
                                    d/use-tarball-defaults)
-          config-custom-dirs
+          [configured-path]
           (get-in
-           (bc/get-custom-dirs definitions-data
-                               :cassandra-env-sh
-                               {:cassandra-env-sh {:cassandra-log-dir "var/log/cassandra"}})
-           [:node-info :config-custom-dirs])]
-      (is (nil? config-custom-dirs)))))
+           (bc/get-configured-paths definitions-data
+                                    :cassandra-env-sh
+                                    {:cassandra-env-sh {:cassandra-log-dir "var/log/cassandra"}})
+           [:node-info :configured-paths])]
+      (is configured-path)
+      (is (= "var/log/cassandra" (:path configured-path)))
+      (is (false? (:custom? configured-path))))))
 
 (deftest test-fully-qualify-paths
   (let [definitions-data (test-data/get-definitions-data)

@@ -5,6 +5,16 @@
             [clojure.java.io :as io]
             [lcm.utils.version :as v]))
 
+;; Configuration values that represent filesystem paths, such as the
+;; Cassandra data directory. This record holds metadata about these
+;; locations that may be needed downstream.
+(defrecord ConfiguredPath [config-file
+                           key
+                           path
+                           custom?    ;; is this different from the default?
+                           directory? ;; is this a directory or file path?
+                           ])
+
 ;; The input config-data will contain some model-info. These contain
 ;; data that is not defined in the definitions, such as listen_address.
 (def model-info-keys #{:cluster-info :datacenter-info :node-info})
@@ -24,7 +34,10 @@
                      native_transport_broadcast_address
                      initial_token
                      auto_bootstrap
-                     agent_version])
+                     agent_version
+                     configured-paths])
+
+
 
 (defn valid-config-keys?
   "Are the keys in config-data valid for this version of DSE?"
@@ -268,11 +281,12 @@
     ;; don't qualify paths unless it's a tarball install
     identity))
 
-(defn- get-custom-dirs*
+(defn- get-configured-paths*
   "Given a config key, returns a reduce fn that compares a field's
   :default_value from definitions to the actual user config value.
-  If they are different, the config value is added to the
-  :config-custom-dirs map in the profile context."
+  Adds metadata to the :configured-paths key of the node-info map
+  about the paths, including whether it is custom and whether it
+  represents a directory."
   [definitions config-key]
   (fn [config-data
        directory-property-path]
@@ -282,29 +296,29 @@
           fully-qualify (fully-qualify-fn config-data)
 
           ;; if the field type is list, convert it to a set
-          as-set (fn [default-value]
-                   (if (= "list" (:type field-metadata))
-                     ;; convert list to set
-                     (set (map fully-qualify default-value))
-                     ;; wrap single value in set, unless nil
-                     (if (nil? default-value) #{} (hash-set (fully-qualify default-value)))))
-          default-values (as-set (:default_value field-metadata))
-          actual-values (as-set (get-in config-data
-                                        (cons config-key config-key-path)))
+          ;; also ensure the values are fully-qualified
+          as-fully-qualified-seq
+          (fn [v]
+            (if (= "list" (:type field-metadata))
+              (map fully-qualify v)
+              ;; wrap single value in seq, unless nil
+              (if (nil? v) [] (vector (fully-qualify v)))))
+          as-fully-qualified-set (comp set as-fully-qualified-seq)
+          is-custom? (complement (as-fully-qualified-set (:default_value field-metadata)))
+          actual-values (as-fully-qualified-seq (get-in config-data
+                                                        (cons config-key config-key-path)))]
 
-          ;; Remove default values from the actual values. What's left
-          ;; are custom values
-          custom-values (remove default-values actual-values)]
-
-      (if (empty? custom-values)
-        config-data ;; no custom values
-        (assoc-in config-data
-                  [:node-info :config-custom-dirs config-key config-key-path]
-                  ;; We provide all this data to meld so it can create
-                  ;; friendly event messages.
-                  {:config-file (get-in definitions [config-key :display-name])
-                   :key config-key-path
-                   :dirs custom-values})))))
+      (update-in config-data
+                 [:node-info :configured-paths]
+                 concat
+                 (map
+                  (fn [actual-value]
+                    (ConfiguredPath. (get-in definitions [config-key :display-name])
+                                     config-key-path
+                                     actual-value
+                                     (is-custom? actual-value)
+                                     (boolean (:is_directory field-metadata))))
+                  actual-values)))))
 
 (defn fully-qualify-paths
   "Ensures that tarball paths are fully qualified."
@@ -345,26 +359,26 @@
     ;; Change nothing if it's a package install
     config-data))
 
-(defn get-custom-dirs
-  "For the given config-key, finds user-specified non-default directory
-  paths in the config and adds them to the node-info."
+(defn get-configured-paths
+  "For the given config-key, finds all configured filesystem path-like values
+  and adds certain metadata for them to the node-info."
   [{:keys [definitions]} config-key config-data]
   (if-let [definitions-for-config
            (select-keys (get definitions config-key) [:properties])]
-    (let [;; Get path to a definition properties that represent directories
-          ;; Note that the call to map paths will return a path with :is_directory
+    (let [;; Get path to a definition properties that represent directories and files
+          ;; Note that the call to map paths will return a path with :is_directory (or :is_file)
           ;; at the end, so mapping butlast over the seq will trim that.
           ;; Example entry before trimming:
           ;; [:properties :data_file_directories :is_directory]
-          directory-property-paths
-          (map butlast (data/map-paths is-directory? definitions-for-config))]
-      ;; For each directory property-path, get the :default_value and the actual
-      ;; value in config. If they are different, add the actual value to the context.
-      ;; This will result in meld checking that directory for existence, etc.
+          directory-file-property-paths
+          (map butlast (data/map-paths is-path? definitions-for-config))]
+      ;; For each directory/file property-path, get the :default_value and the actual
+      ;; value in config. Include metadata in node-info indicating the configured path,
+      ;; whether or not it is custom, and whether or not it is a directory or file.
       (reduce
-        (get-custom-dirs* definitions config-key)
+        (get-configured-paths* definitions config-key)
         config-data
-        directory-property-paths))
+        directory-file-property-paths))
     config-data))
 
 (defn build-configs*
@@ -374,7 +388,7 @@
             (->> config-data
                  (enrich-config definitions-data config-key)
                  (generate-file-path definitions-data config-key)
-                 (get-custom-dirs definitions-data config-key)
+                 (get-configured-paths definitions-data config-key)
                  (fully-qualify-paths definitions-data config-key)))
           config-data (keys config-data)))
 
@@ -384,7 +398,7 @@
   [config-data]
   (if (tarball-config? config-data)
     (dissoc config-data :dse-default)
-    (dissoc config-data :datastax-env-sh) ))
+    (dissoc config-data :datastax-env-sh)))
 
 (defn build-configs
   "Enriches the config-data by merging in defaults (where there are no
