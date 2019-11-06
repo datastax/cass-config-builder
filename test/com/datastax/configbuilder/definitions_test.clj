@@ -364,9 +364,9 @@
               all-vals)
             (str "A definition for DSE version " helper/default-dse-version " is missing groupings"))))))
 
-(defn test-yaml
+(defn test-yaml-for-version
   "Common test method for cassandra.yaml and dse.yaml"
-  [config-id ignore-fields]
+  [datastax-version config-id ignore-fields]
   ;; We should test that...
   ;; - all keys present in yaml file are present in definition
   ;; - verify required fields (top-level)
@@ -375,8 +375,8 @@
         definition
         (get-field-metadata definitions-location
                             config-id
-                            "6.7.0")
-        yaml-string (slurp (str "test/data/configs/dse-6.7.0/" (filenames config-id)))
+                            datastax-version)
+        yaml-string (slurp (format "test/data/configs/dse-%s/%s" datastax-version (filenames config-id)))
         yaml-data (yaml/parse yaml-string :keywords true)
         yaml-keys (set (keys yaml-data))
         diffs (data/diff (set (keys (:properties definition))) yaml-keys)]
@@ -415,8 +415,8 @@
           (is (not (:required prop)) (format "Property %s should not be marked as required" prop-name)))))))
 
 (deftest test-dse-6-7-0-yaml
-  (test-yaml :cassandra-yaml #{:seeds :seed_provider :listen_address :rpc_address :commitlog_sync_period_in_ms :cluster_name})
-  (test-yaml :dse-yaml #{:max_memory_to_lock_fraction :config_encryption_key_name}))
+  (test-yaml-for-version "6.7.0" :cassandra-yaml #{:seeds :seed_provider :listen_address :rpc_address :commitlog_sync_period_in_ms :cluster_name})
+  (test-yaml-for-version "6.7.0" :dse-yaml #{:max_memory_to_lock_fraction :config_encryption_key_name}))
 
 (deftest test-default-dse-version-dse-yaml-definition
   (let [definition
@@ -795,32 +795,62 @@
     (let [def-defaults (definition-defaults metadata)]
       (is def-defaults))))
 
-(defmulti check-file-paths
-  "Makes sure that :package-path and :tarball-path are present and correct.
-  :package-path must be absolute and :tarball-path must be relative."
+(defmulti check-tarball-paths
+  "Makes sure that :tarball-path is present and either empty string or
+  else it must be a relative path. Which one is required depends on the
+  config file."
   (fn [_ config-key _]
-    (get {:java-setup      :no-file
-          :package-proxy   :no-file
-          :install-options :no-file}
-         config-key config-key)))
+    (if (contains? #{:java-setup
+                     :package-proxy
+                     :install-options
+                     :10-write-prom-conf
+                     :10-write-graphite-conf
+                     :10-statsd-conf}
+                   config-key)
+      :no-file
+      config-key)))
 
-(defmethod check-file-paths :default
-  [{:keys [package-path tarball-path]} config-key dse-version]
-  (testing (format "Testing :package-path for DSE=%s config-key=%s" dse-version config-key)
-    ;; Empty string is valid, see datastax-env-sh-dse-6.0.0.edn
-    (is (or (= "") (.isAbsolute (io/file package-path)))
-        (format ":package-path '%s' is not absolute or the empty string" package-path)))
+(defmethod check-tarball-paths :default
+  [{:keys [tarball-path]} config-key dse-version]
   (testing (format "Testing :tarball-path for DSE=%s config-key=%s" dse-version config-key)
     (is (and
+         (not (empty? tarball-path))
          (not (.isAbsolute (io/file tarball-path)))
          (not (.startsWith tarball-path "./"))
          (not (.startsWith tarball-path "../")))
         (format ":tarball-path '%s' is not relative" tarball-path))))
 
-(defmethod check-file-paths :no-file
-  [{:keys [package-path tarball-path]} config-key dse-version]
-  (is (= "" package-path))
-  (is (= "" tarball-path)))
+(defmethod check-tarball-paths :no-file
+  [{:keys [tarball-path]} config-key dse-version]
+  (is (= "" tarball-path)
+      (format ":tarball-path should be empty for %s in DSE %s"
+              config-key dse-version)))
+
+(defmulti check-package-paths
+  "Makes sure that :package-path is present and either empty string or
+  else it must be an absolute path. Which one is required depends on the
+  config file. "
+  (fn [_ config-key _]
+    (if (contains? #{:java-setup
+                     :package-proxy
+                     :install-options
+                     :datastax-env-sh}
+                   config-key)
+      :no-file
+      config-key)))
+
+(defmethod check-package-paths :default
+  [{:keys [package-path]} config-key dse-version]
+  (testing (format "Testing :package-path for DSE=%s config-key=%s" dse-version config-key)
+    ;; Empty string is valid, see datastax-env-sh-dse-6.0.0.edn
+    (is (and (not (empty? package-path)) (.isAbsolute (io/file package-path)))
+        (format ":package-path '%s' is not absolute" package-path))))
+
+(defmethod check-package-paths :no-file
+  [{:keys [package-path]} config-key dse-version]
+  (is (= "" package-path)
+      (format ":package-path should be empty for %s in DSE %s"
+              config-key dse-version)))
 
 (deftest check-all-definitions
   "Check some properties of the definitions using versions.edn"
@@ -857,10 +887,10 @@
         (check-has-order metadata config-id dse-version)
         (check-dependencies metadata config-id dse-version)
         (check-ui-visibility metadata config-id dse-version)
-        (check-conf-paths metadata config-id dse-version)
         (check-auth metadata config-id dse-version)
         (check-renderer metadata config-id dse-version)
-        (check-file-paths metadata config-id dse-version)
+        (check-package-paths metadata config-id dse-version)
+        (check-tarball-paths metadata config-id dse-version)
         (check-defaults metadata config-id dse-version)))))
 
 (deftest test-check-depends?
