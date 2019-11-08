@@ -562,6 +562,24 @@
         (format "Some property is defined more than once for definition %s v%s"
                 config-id version))))
 
+(defn make-check-recursive
+  "Any assertions that need to be applied to all fields (even
+  deeply nested ones) can leverage this The return value will be
+  a normal check-* style function. The provided function must
+  take the following arguments:
+
+  [metadata config-id dse-version field-name field-metadata]"
+  [check-fn]
+  (fn [metadata config-id dse-version]
+    (letfn [(check-at-level [fields]
+              (doseq [[field-name field-metadata] fields]
+                ;; Run the check-fn on each field at this level
+                (check-fn metadata config-id dse-version field-name field-metadata))
+              (doseq [next-level (filter :fields (vals fields))]
+                ;; Do the same thing for every field at the next level
+                (check-at-level (:fields next-level))))]
+      (check-at-level (:properties metadata)))))
+
 (defn check-dependencies [metadata config-id version]
   (letfn [(check-depends-at-level [fields]
             (doseq [[name field-metadata] (filter dependent-field? fields)]
@@ -852,6 +870,20 @@
       (format ":package-path should be empty for %s in DSE %s"
               config-key dse-version)))
 
+
+(defn check-tarball-defaults-for-paths
+  "Makes sure that all file and directory properties have a
+  :tarball_default value."
+  [_ config-id dse-version field-name field-metadata]
+  (when (and
+         (version/version-is-at-least "6.0.0" dse-version)
+         (or (:is_file field-metadata)
+             (:is_directory field-metadata))
+         (seq (:default_value field-metadata)))
+    (is (seq (:tarball_default field-metadata))
+        (format "File or directory property %s has a :default_value but is missing :tarball_default. Config: %s, DSE version %s"
+                field-name config-id dse-version))))
+
 (deftest check-all-definitions
   "Check some properties of the definitions using versions.edn"
   (let [versions-edn-parsed (get-all-versions definitions-location)
@@ -875,23 +907,25 @@
                                   dse-versions
                                   all-opsc-dse-versions)))
     (doseq [dse-version all-dse-versions]
-      (doseq [[config-id metadata] (get definitions-by-dse-version dse-version)]
-        (check-for-ternary-booleans metadata config-id dse-version)
-        (check-for-directories-with-descriptions metadata config-id dse-version)
-        (check-group-names metadata config-id dse-version)
-        (check-for-invalid-attributes metadata config-id dse-version)
-        (check-property-types metadata config-id dse-version)
-        (check-boolean-property-requireds metadata config-id dse-version)
-        (check-groups metadata config-id dse-version)
-        (check-field-order metadata config-id dse-version)
-        (check-has-order metadata config-id dse-version)
-        (check-dependencies metadata config-id dse-version)
-        (check-ui-visibility metadata config-id dse-version)
-        (check-auth metadata config-id dse-version)
-        (check-renderer metadata config-id dse-version)
-        (check-package-paths metadata config-id dse-version)
-        (check-tarball-paths metadata config-id dse-version)
-        (check-defaults metadata config-id dse-version)))))
+      (doseq [[config-id metadata] (get definitions-by-dse-version dse-version)
+              check-fn [check-for-ternary-booleans
+                        check-for-directories-with-descriptions
+                        check-group-names
+                        check-for-invalid-attributes
+                        check-property-types
+                        check-boolean-property-requireds
+                        check-groups
+                        check-field-order
+                        check-has-order
+                        check-dependencies
+                        check-ui-visibility
+                        check-auth
+                        check-renderer
+                        check-package-paths
+                        check-tarball-paths
+                        (make-check-recursive check-tarball-defaults-for-paths)
+                        check-defaults]]
+        (check-fn metadata config-id dse-version)))))
 
 (deftest test-check-depends?
   (is (check-depends? {:a 1}
