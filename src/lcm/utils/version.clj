@@ -99,3 +99,22 @@
      (string/starts-with? version-string (apply str (drop-last version-pattern))))
     ;; with no .x suffix, do exact match only
     (= version-pattern version-string)))
+
+(defn fallback
+  "Returns the maximum version from the collection that is less than or equal
+  to target-version. Returns nil if nothing from the collection matches this
+  criteria."
+  [target-version versions]
+  ;; Drop versions that are greater than target-version, then sort in
+  ;; reverse order and the fallback version will be the first item.
+  (first
+   (sort version-not-greater-than
+         (filter (partial version-not-greater-than target-version) versions))))
+
+(defn get-fallback
+  "Functions like get called on a map, but assumes keys are versions and will
+  match fallback version. "
+  ;; Example: (get {"6.0.0" 5} "6.0.12") => 5
+  [version-map target-version]
+  (or (get version-map target-version)
+      (get version-map (fallback target-version (keys version-map)))))

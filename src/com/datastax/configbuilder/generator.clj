@@ -252,7 +252,8 @@
 
   clojure.lang.Keyword
   (apply-transform
-    ;;"Primarily for no-change transform values. Simply returns the previous metadata version."
+    ;; Primarily for no-change transform values. These are now optional because of the version fallback
+    ;; feature added in 7.0.
     [this metadata]
     (if (= this :no-change)
       metadata

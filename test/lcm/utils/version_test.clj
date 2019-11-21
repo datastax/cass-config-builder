@@ -69,3 +69,16 @@
   (is (not (version/version-matches? "6.1.x" "6.13.1")))
   (is (version/version-matches? "6.1" "6.1"))
   (is (not (version/version-matches? "6.1" "6.1.2"))))
+
+(deftest test-fallback
+  (is (= "6.0.4" (version/fallback "6.0.4" ["6.0.4"])))
+  (is (= "6.0.0" (version/fallback "6.0.4" ["6.8.0" "6.0.7" "6.0.0" "5.1.2"])))
+  (is (= "6.0.4" (version/fallback "6.0.4" ["6.8.0" "6.0.7" "6.0.0" "6.0.4" "5.1.2"])))
+  (is (nil? (version/fallback "6.0.4" [])))
+  (is (nil? (version/fallback "6.0.4" nil)))
+  (is (nil? (version/fallback "6.0.4" ["6.8.0" "6.7.1"]))))
+
+(deftest test-get-fallback
+  (is (= 5 (version/get-fallback {"6.0.5" 5} "6.0.5")))
+  (is (= 4 (version/get-fallback {"6.0.1" 4} "6.1.2")))
+  (is (nil? (version/get-fallback {"6.0.1" 12} "5.1.2"))))

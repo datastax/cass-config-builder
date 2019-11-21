@@ -6,6 +6,7 @@
               [clojure.pprint :refer [pprint]]
               [clojure.edn :as edn]
               [lcm.utils.data :as data]
+              [lcm.utils.version :as v]
               [slingshot.slingshot :refer [throw+ try+]]
               [com.datastax.configbuilder.generator :as gen]))
 
@@ -133,7 +134,7 @@
                     (name config-file-id)
                     " for version " product-version)})
       (let [all-metadata (gen/generate-unsweetened-metadata transforms-file)]
-        (get-in all-metadata [product-version])))))
+        (v/get-fallback all-metadata product-version)))))
 
 (defn config-file-valid?
   "Returns true if this configuration file is valid

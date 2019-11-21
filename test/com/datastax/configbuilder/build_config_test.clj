@@ -29,17 +29,6 @@
         cluster-info {:name  "test-cluster-1"
                       :seeds "1,2,3"}]
 
-    (testing "cassandra.yaml for DSE 5.1.0"
-      (let [built-configs
-            (bc/build-configs (test-data/get-definitions-data "5.1.0")
-                              {:cluster-info (assoc cluster-info :datastax-version "5.1.0")
-                               :node-info    node-info})]
-        (testing "old *_address field name conversion"
-          (is (= "1.1.1.3" (get-in built-configs [:cassandra-yaml :rpc_address])))
-          (is (= "1.1.1.4" (get-in built-configs [:cassandra-yaml :broadcast_rpc_address])))
-          (is (every? nil? (map (:cassandra-yaml built-configs)
-                                [:native_transport_address :native_transport_broadcast_address]))))))
-
     (testing "cassandra.yaml for the default DSE version"
       (let [built-configs
             (bc/build-configs (test-data/get-definitions-data helper/default-dse-version)

@@ -490,12 +490,6 @@
           (is (.isFile (io/file transforms-path))
               (str "Expected the transforms file to exist and be a plain file: "
                    transforms-path)))
-        (testing "Every dse-version has a transform"
-          (doseq [dse-version dse-versions]
-            (is (not (nil? (get transforms dse-version)))
-                (format "Expected %s to have an transform for version %s"
-                        transforms-path
-                        dse-version))))
         (testing "Every transform has a versions.edn version"
           (let [all-dse-versions (->> all-opsc-dse-versions
                                       vals
@@ -1064,24 +1058,12 @@
 
   (testing "config-file-valid?"
     ;; this has [:all]
-    (is (config-file-valid? definitions-location :cassandra-yaml "4.8.0"))
-    (is (config-file-valid? definitions-location :cassandra-yaml "5.0.1"))
+    (is (config-file-valid? definitions-location :cassandra-yaml "6.0.0"))
+    (is (config-file-valid? definitions-location :cassandra-yaml "6.0.8"))
 
-    ;; jvm-options has [:gte 5.1.0]
-    (is (false? (config-file-valid? definitions-location :jvm-options "4.8.0")))
-    (is (false? (config-file-valid? definitions-location :jvm-options "5.0.1")))
-    (is (config-file-valid? definitions-location :jvm-options "5.1.0"))
-
-    ;; hive-site.xml is valid for DSE 5.1.x,
-    ;; but not for 4.8.x or 5.0.x. The definitions for that setup
-    ;; are both complex and confusing. Let's assert here that they're
-    ;; configured as required.  If this breaks, the most likely
-    ;; explanation is a definitions bug.
-    (is (false? (config-file-valid? definitions-location :hive-site-xml "4.8.0")))
-    (is (false? (config-file-valid? definitions-location :hive-site-xml "4.8.6")))
-    (is (false? (config-file-valid? definitions-location :hive-site-xml "5.0.1")))
-    (is (false? (config-file-valid? definitions-location :hive-site-xml "5.0.3")))
-    (is (config-file-valid? definitions-location :hive-site-xml "5.1.0")))
+    ;; jvm-options is not valid after 6.8.0
+    (is (false? (config-file-valid? definitions-location :jvm-options "6.8.0")))
+    (is (config-file-valid? definitions-location :jvm-options "6.0.0")))
 
   (testing "user_defined type"
     (let [definition

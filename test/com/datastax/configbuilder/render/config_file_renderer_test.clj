@@ -76,18 +76,18 @@
 (deftest test-render-config-file
   (testing "template render"
     (let [result (renderer/render-config-file
-                  {:datastax-version "5.1.0"
+                  {:datastax-version helper/default-dse-version
                    :definitions-location definitions-location
-                   :definitions (d/get-all-definitions-for-version definitions-location "5.1.0")}
+                   :definitions (d/get-all-definitions-for-version definitions-location helper/default-dse-version)}
                   :cassandra-rackdc-properties
                   {:cassandra-rackdc-properties {:rack "rack4" :dc "dc3"}})]
       (is (.contains result "dc=dc3"))
       (is (.contains result "rack=rack4"))))
   (testing "yaml render"
     (let [result (renderer/render-config-file
-                  {:datastax-version "5.1.0"
+                  {:datastax-version helper/default-dse-version
                    :definitions-location definitions-location
-                   :definitions (d/get-all-definitions-for-version definitions-location "5.1.0")}
+                   :definitions (d/get-all-definitions-for-version definitions-location helper/default-dse-version)}
                   :dse-yaml
                   {:dse-yaml {:max_memory_to_lock_mb 2048}})]
       (is (.contains result "max_memory_to_lock_mb: 2048")))))
@@ -225,19 +225,19 @@ rm-key1 rm-value1
 
 (deftest test-render-jvm-options
   (let [result (renderer/render-config-file
-                {:datastax-version "5.1.2"
-                 :definitions (d/get-all-definitions-for-version definitions-location "5.1.2")
+                {:datastax-version helper/default-dse-version
+                 :definitions (d/get-all-definitions-for-version definitions-location helper/default-dse-version)
                  :definitions-location definitions-location}
                 :jvm-options
                 {:jvm-options
-                  ;; These are the stock field-values from a 5.1.2 run
+                  ;; These are the stock field-values from a 6.0.0 run
                   {:additional-jvm-opts []
                    :log_gc false
                    :thread_priority_policy_42 true
-                   :use_gc_log_file_rotation false
+                   :use_gc_log_file_rotation true
                    :initiating_heap_occupancy_percent ""
                    :string_table_size 1000003
-                   :print_tenuring_distribution false
+                   :print_tenuring_distribution true
                    :resize_tlb true
                    :cassandra_join_ring true
                    :use_tlb true
@@ -251,33 +251,27 @@ rm-key1 rm-value1
                    :java_net_prefer_ipv4_stack true
                    :cassandra_load_ring_state true
                    :per_thread_stack_size "256k"
-                   :use_biased_locking false
                    :print_flss_statistics false
-                   :print_heap_at_gc false
+                   :print_heap_at_gc true
                    :cassandra_write_survey false
-                   :print_gc_application_stopped_time false
+                   :print_gc_application_stopped_time true
                    :garbage_collector "G1GC"
-                   :print_promotion_failure false
+                   :print_promotion_failure true
                    :parallel_gc_threads ""
-                   :jmx-connection-type "remote-dse-unified-auth"
-                   :jmx-remote-ssl true
-                   :jmx-remote-ssl-opts
-                   ["-Djavax.net.ssl.keyStore=/etc/dse/keystores/client.keystore"
-                    "-Djavax.net.ssl.keyStorePassword=HidePw"
-                    "-Djavax.net.ssl.trustStore=/etc/dse/keystores/client.truststore"
-                    "-Djavax.net.ssl.trustStorePassword=HidePw"]
-                   :gc_log_file_size ""
+                   :jmx-connection-type "local-no-auth"
+                   :jmx-remote-ssl false
+                   :gc_log_file_size "10M"
                    :conc_gc_threads ""
                    :max_heap_size "auto"
                    :use_thread_priorities true
                    :enable_assertions true
-                   :print_gc_date_stamps false
+                   :print_gc_date_stamps true
                    :cassandra_force_default_indexing_page_size false
                    :flight_recorder false
                    :agent_lib_jdwp false
                    :jmx-port 7199
-                   :number_of_gc_log_files "0"
-                   :print_gc_details false
+                   :number_of_gc_log_files 10
+                   :print_gc_details true
                    :max_gc_pause_millis 500}})]
     (is     (= (str/trim result)
                "# This file is managed by DataStax OpsCenter LifeCycle Manager.
@@ -293,20 +287,27 @@ rm-key1 rm-value1
 #-XX:ConcGCThreads=
 -ea
 -XX:G1RSetUpdatingPauseTimePercent=5
-#-XX:GCLogFileSize=
+-XX:GCLogFileSize=10M
 -XX:+HeapDumpOnOutOfMemoryError
 #-Xmsauto
 #-XX:InitiatingHeapOccupancyPercent=
 -Djava.net.preferIPv4Stack=true
 -XX:MaxGCPauseMillis=500
 #-Xmxauto
-#-XX:NumberOfGCLogFiles=0
+-XX:NumberOfGCLogFiles=10
 #-XX:ParallelGCThreads=
 -Xss256k
 -XX:+PerfDisableSharedMem
+-XX:+PrintGCApplicationStoppedTime
+-XX:+PrintGCDateStamps
+-XX:+PrintGCDetails
+-XX:+PrintHeapAtGC
+-XX:+PrintPromotionFailure
+-XX:+PrintTenuringDistribution
 -XX:+ResizeTLAB
 -XX:StringTableSize=1000003
 -XX:ThreadPriorityPolicy=42
+-XX:+UseGCLogFileRotation
 -XX:+UseThreadPriorities
 -XX:+UseTLAB
 
@@ -319,23 +320,8 @@ rm-key1 rm-value1
 
 
 
-
-
--Dcassandra.jmx.remote.login.config=CassandraLogin
--Dcom.sun.management.jmxremote.ssl.need.client.auth=true
--Dcassandra.jmx.authorizer=org.apache.cassandra.auth.jmx.AuthorizationProxy
--Djava.security.auth.login.config=/etc/dse/cassandra/cassandra-jaas.config
--Dcassandra.jmx.remote.port=7199
--Dcom.sun.management.jmxremote.authenticate=true
-
-
--Dcom.sun.management.jmxremote.ssl=true
--Dcom.sun.management.jmxremote.ssl.need.client.auth=true
--Dcom.sun.management.jmxremote.registry.ssl=true
--Djavax.net.ssl.keyStore=/etc/dse/keystores/client.keystore
--Djavax.net.ssl.keyStorePassword=HidePw
--Djavax.net.ssl.trustStore=/etc/dse/keystores/client.truststore
--Djavax.net.ssl.trustStorePassword=HidePw"))))
+-Dcom.sun.management.jmxremote.authenticate=false
+-Dcassandra.jmx.local.port=7199"))))
 
 (deftest test-render-unsupported-configuration-file
   ;; Unknown configuration files are verbotten. Instead of returning nil here, like we
