@@ -11,29 +11,36 @@
         (bc/with-defaults (test-data/get-definitions-data helper/default-dse-version)
                           {})]
     ;; Check the total number of config files
-    (is (= 21 (count configs)))
+    (is (= 22 (count configs)))
     ;; Check some random default values
     (is (= "/var/lib/cassandra/commitlog"
            (get-in configs [:cassandra-yaml :commitlog_directory])))
     (is (= 1.0 (get-in configs [:cassandra-yaml :seed_gossip_probability])))))
 
-(deftest test-build-configs-cassandra-yaml
-  (let [node-info {:name                               "node-1"
-                   :rack                               "rack-1"
-                   :listen_address                     "1.1.1.1"
-                   :broadcast_address                  "1.1.1.2"
-                   :native_transport_address           "1.1.1.3"
-                   :native_transport_broadcast_address "1.1.1.4"
-                   :initial_token                      "123XYZ"
-                   :auto_bootstrap                     true}
-        cluster-info {:name  "test-cluster-1"
-                      :seeds "1,2,3"}]
-
-    (testing "cassandra.yaml for the default DSE version"
-      (let [built-configs
-            (bc/build-configs (test-data/get-definitions-data helper/default-dse-version)
-                              {:cluster-info (assoc cluster-info :datastax-version helper/default-dse-version)
-                               :node-info    node-info})]
+(deftest test-build-configs
+  (testing "for package installs"
+    (let [datacenter-info {:name "dc-1"
+                           :graph-enabled 1
+                           :spark-enabled 0
+                           :solr-enabled  0}
+          node-info {:name                               "node-1"
+                     :rack                               "rack-1"
+                     :listen_address                     "1.1.1.1"
+                     :broadcast_address                  "1.1.1.2"
+                     :native_transport_address           "1.1.1.3"
+                     :native_transport_broadcast_address "1.1.1.4"
+                     :initial_token                      "123XYZ"
+                     :auto_bootstrap                     true}
+          cluster-info {:name  "test-cluster-1"
+                        :seeds "1,2,3"}
+          built-configs
+          (bc/build-configs (test-data/get-definitions-data helper/default-dse-version)
+                            {:cluster-info (assoc cluster-info :datastax-version helper/default-dse-version)
+                             :node-info    node-info
+                             :datacenter-info datacenter-info
+                             :dse-env-sh {:dse-log-root "/foo/log"
+                                          :cassandra-log-dir "/foo/log/cassandra"}})]
+      (testing "- cassandra.yaml"
         (testing "default values"
           (is (= 1.0 (get-in built-configs [:cassandra-yaml :seed_gossip_probability]))))
         (testing "ignored fields"
@@ -46,50 +53,37 @@
           (is (= "1,2,3" (get-in built-configs [:cassandra-yaml :seed_provider 0 :parameters 0 :seeds])))
           (is (= "1.1.1.3" (get-in built-configs [:cassandra-yaml :native_transport_address])))
           (is (= "1.1.1.4" (get-in built-configs [:cassandra-yaml :native_transport_broadcast_address])))
-          (is (every? nil? (map (:cassandra-yaml built-configs) [:rpc_address :broadcast_rpc_address]))))))))
+          (is (every? nil? (map (:cassandra-yaml built-configs) [:rpc_address :broadcast_rpc_address])))))
+      (testing "- cassandra-env.sh"
+        (is (= 7199
+               (get-in built-configs [:jvm-options :jmx-port])  ;; source
+               (get-in built-configs [:cassandra-env-sh :jmx-port]))))
+      (testing "- dse.default"
+        (is (= (select-keys datacenter-info bc/workload-keys)
+               (select-keys (:dse-default built-configs) bc/workload-keys)))
+        (is (= {:cassandra-user "cassandra"
+                :cassandra-group "cassandra"}
+               (select-keys (get built-configs :dse-default)
+                            [:cassandra-user
+                             :cassandra-group]))))
+      (testing "- cassandra-rackdc.properties"
+        (is (= {:dc "dc-1" :rack "rack-1"}
+               (:cassandra-rackdc-properties built-configs))))
+      (testing "- dse-env.sh"
+        (is (= "/foo/log/cassandra" (get-in built-configs [:dse-env-sh :cassandra-log-dir]))))))
 
-(deftest test-build-configs-cassandra-env-sh
-  (testing "for package installs"
-    (let [
-          built-configs
-          (bc/build-configs (test-data/get-definitions-data helper/default-dse-version)
-                            ;; an empty config should inherit the default :jvm-options and :jmx-port
-                            {})]
-      (is (= "/var/log/cassandra" (get-in built-configs [:cassandra-env-sh :cassandra-log-dir])))
-      (is (= 7199
-             (get-in built-configs [:jvm-options :jmx-port])  ;; source
-             (get-in built-configs [:cassandra-env-sh :jmx-port]))))) ;; destination
   (testing "for tarball installs"
     (let [built-configs
           (bc/build-configs (test-data/get-definitions-data helper/default-dse-version)
                             {:install-options {:install-type "tarball"
-                                               :install-directory "/opt/dse"}})]
-      (is (= "/opt/dse/var/log/cassandra" (get-in built-configs [:cassandra-env-sh :cassandra-log-dir]))))))
-
-(deftest test-build-configs-dse-default
-  (let [datacenter-info {:graph-enabled 1
-                         :spark-enabled 0
-                         :solr-enabled  0}
-        built-configs
-        (bc/build-configs (test-data/get-definitions-data helper/default-dse-version)
-                          {:datacenter-info datacenter-info})]
-    (is (= datacenter-info
-           (select-keys (:dse-default built-configs) bc/workload-keys)))
-    (is (= {:cassandra-user "cassandra"
-            :cassandra-group "cassandra"}
-           (select-keys (get built-configs :dse-default)
-                        [:cassandra-user
-                         :cassandra-group])))))
-
-(deftest test-build-configs-cassandra-rackdc-properties
-  (let [datacenter-info {:name "dc1"}
-        node-info {:rack "rack1"}
-        built-configs
-        (bc/build-configs (test-data/get-definitions-data helper/default-dse-version)
-                          {:datacenter-info datacenter-info
-                           :node-info       node-info})]
-    (is (= {:dc "dc1" :rack "rack1"}
-           (:cassandra-rackdc-properties built-configs)))))
+                                               :install-directory "/home/targ/dse"}
+                             :dse-env-sh {:dse-log-root "log"
+                                          :cassandra-log-dir "log/cassandra"}})]
+      (testing "- dse.yaml"
+        (is (= "/home/targ/dse/resources/dse/conf"
+               (get-in built-configs [:dse-yaml :system_key_directory]))))
+      (testing "- dse-env.sh"
+        (is (= "/home/targ/dse/log/cassandra" (get-in built-configs [:dse-env-sh :cassandra-log-dir])))))))
 
 (deftest test-build-configs-no-enrichment
   (testing "configs with no enrichment"
@@ -130,7 +124,7 @@
       ;; b) Less than expected - a key that used to be unmodified has either been removed or is
       ;;    now an enriched config. In the former case, decrement the expected count. For the
       ;;    latter, add it's config-key to the enriched-keys set above.
-      (is (= 16 (count unmodified-configs))))))
+      (is (= 17 (count unmodified-configs))))))
 
 (deftest test-build-configs-bad-keys
   ;; What happens when a key exists in config-data for which there is no corresponding key
@@ -211,17 +205,17 @@
         (do
           (is (= "Unexpected value" configured-path))))))
   (testing "for tarball installs"
-    (let [definitions-data (update (test-data/get-definitions-data "6.7.2")
+    (let [definitions-data (update (test-data/get-definitions-data helper/default-dse-version)
                                    :definitions
                                    d/use-tarball-defaults)
           [configured-path]
           (get-in
            (bc/get-configured-paths definitions-data
-                                    :cassandra-env-sh
-                                    {:cassandra-env-sh {:cassandra-log-dir "var/log/cassandra"}})
+                                    :dse-yaml
+                                    {:dse-yaml {:system_key_directory "resources/dse/conf"}})
            [:node-info :configured-paths])]
       (is configured-path)
-      (is (= "var/log/cassandra" (:path configured-path)))
+      (is (= "resources/dse/conf" (:path configured-path)))
       (is (false? (:custom? configured-path))))))
 
 (deftest test-fully-qualify-paths
