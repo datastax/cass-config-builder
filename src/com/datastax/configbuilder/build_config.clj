@@ -35,7 +35,8 @@
                      initial_token
                      auto_bootstrap
                      agent_version
-                     configured-paths])
+                     configured-paths
+                     facts])
 
 
 
@@ -60,6 +61,16 @@
   "Does this config represent a tarball installation?"
   [config-data]
   (tarball? (get-in config-data [:install-options :install-type])))
+
+(defn get-install-directory
+  "If the :install-directory from :install-options is non-empty, returns it.
+  Otherwise, it gets the :install-directory from :node-info, which was posted
+  as a fact by meld."
+  [{:keys [node-info install-options] :as config-data}]
+  (get (if (seq (:install-directory install-options))
+         install-options
+         (get-in node-info [:facts :run-context :install-options]))
+       :install-directory))
 
 (defn maybe-use-tarball-defaults
   "Returns definitions with the default-values potentially swapped out
@@ -192,8 +203,8 @@
 
 ;; this only applies to tarball and is removed when NOT tarball
 (defmethod enrich-config :datastax-env-sh
-  [_ config-key {:keys [java-setup install-options] :as config-data}]
-  (let [install-directory (:install-directory install-options)
+  [_ config-key {:keys [java-setup] :as config-data}]
+  (let [install-directory (get-install-directory config-data)
         manage-java (:manage-java java-setup)
         java-vendor (:java-vendor java-setup)]
     (update config-data config-key merge
@@ -215,8 +226,10 @@
 
 (defmethod generate-file-path :default
   [{:keys [definitions]} config-key config-data]
-  (let [{:keys [install-type install-directory] :or {install-type "package"}}
+  (let [{:keys [install-type] :or {install-type "package"}}
         (get config-data :install-options)
+
+        install-directory (get-install-directory config-data)
 
         {:keys [package-path tarball-path]}
         (get definitions config-key)
@@ -237,8 +250,10 @@
 
 (defmethod generate-file-path :address-yaml
   [_ config-key config-data]
-  (let [{:keys [install-type install-directory] :or {install-type "package"}}
-        (:install-options config-data)]
+  (let [{:keys [install-type] :or {install-type "package"}}
+        (:install-options config-data)
+
+        install-directory (get-install-directory config-data)]
     (assoc-in config-data [:node-info :file-paths config-key]
               (if (tarball? install-type)
                 (str (io/file install-directory (:tarball-path address-yaml-paths)))
@@ -276,7 +291,7 @@
   fully qualifies paths."
   [config-data]
   (if (tarball-config? config-data)
-    (partial make-absolute (get-in config-data [:install-options :install-directory]))
+    (partial make-absolute (get-install-directory config-data))
 
     ;; don't qualify paths unless it's a tarball install
     identity))

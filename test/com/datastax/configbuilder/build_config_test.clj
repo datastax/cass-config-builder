@@ -259,3 +259,18 @@
         (is (= "/etc/dse/truststore"
                (get-in result [:cassandra-yaml :client_encryption_options :truststore]))
             "Should not transform paths that are already absolute")))))
+
+(deftest test-get-install-directory
+  (testing "Non-empty install-directory"
+    (is (= "/a/b/c"
+           (bc/get-install-directory {:install-options
+                                      {:install-directory "/a/b/c"}}))))
+  (testing "Empty install-directory"
+    (is (= "/d/e/f"
+           (bc/get-install-directory {:install-options
+                                      {:install-directory ""}
+                                      :node-info
+                                      {:facts
+                                       {:run-context
+                                        {:install-options
+                                         {:install-directory "/d/e/f"}}}}})))))
