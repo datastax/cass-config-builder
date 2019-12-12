@@ -3,9 +3,16 @@
             [com.datastax.configbuilder.test-data :refer [definitions-location]]
             [com.datastax.configbuilder.test-helpers :as helper]
             [com.datastax.configbuilder.definitions :as d]
+            [selmer.parser :refer [render]]
             [clojure.string :as str]
             [slingshot.test :refer :all]
             [clojure.test :refer :all]))
+
+(deftest test-sanitize-bash-env-var-value
+  (is (= (render "{{foo|sanitize-bash-env-var-value}}" {:foo "test"}) "test"))
+  (is (= (render "{{foo|sanitize-bash-env-var-value}}" {:foo "test#"}) "test"))
+  (is (= (render "{{foo|sanitize-bash-env-var-value}}" {:foo "123AbC"}) "123AbC"))
+  (is (= (render "{{foo|sanitize-bash-env-var-value}}" {:foo "1 @_-:&,./+&!+="}) "1 _-:,./++=")))
 
 (deftest test-coerce-types
   (is (= (renderer/coerce-types

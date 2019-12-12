@@ -30,6 +30,23 @@
       second
       as-int))
 
+(defn sanitize-bash-env-var-value
+  "A filter to sanitize the value of a bash environment variable so that it cannot
+  be used as a shell-code injection.
+  This will use a whitelist of:
+
+  - letters
+  - numbers
+  - single space
+  - dash and underscore
+  - colon, comma, and period
+  - forward slash
+  - plus and equal signs"
+  [raw-value]
+  (string/replace raw-value
+                  #"[^-a-zA-Z0-9 _:,./+=]"
+                  ""))
+
 ;; Adds filters to the selmer renderer globally
 ;; These functions can be used inside selmer templates to process the
 ;; values passed into the template. For example:
@@ -38,6 +55,7 @@
 ;; => "7"
 (filters/add-filter! :get-java-minor-version get-java-minor-version-filter)
 (filters/add-filter! :urlencode urlencode-filter)
+(filters/add-filter! :sanitize-bash-env-var-value sanitize-bash-env-var-value)
 
 ;; These filters allow us to iterate over maps
 ;; See: https://stackoverflow.com/a/35074049
