@@ -739,22 +739,14 @@
     (check-property-types-at-level (:properties metadata))))
 
 (defn check-for-ternary-booleans
-  "Checks that the only ternary booleans are the ones that we explicitly allow.
-  Currently this test does not use version in the check, but that could be added
-  in the future."
-  [metadata config-id version]
-  (let [allowed-ternary-booleans
-        ;; We do not currently have any ternary booleans
-        #{}]
-    (doseq [[field-name field-properties] (:properties metadata)]
-      (is (false? (and (= "boolean" (:type field-properties))
-                       (false? (:required field-properties))
-                       (not (contains? allowed-ternary-booleans
-                                       (format "%s%s" config-id field-name)))))
-          (format "Unexpected ternary boolean %s found in config file %s for version %s"
-                  field-name
-                  config-id
-                  version)))))
+  "Checks that there are no old-style ternary booleans (required is false)."
+  [metadata config-id version field-name field-metadata]
+  (is (false? (and (= "boolean" (:type field-metadata))
+                   (false? (:required field-metadata))))
+      (format "Unexpected ternary boolean %s found in config file %s for version %s"
+              field-name
+              config-id
+              version)))
 
 (defn check-for-directories-with-descriptions
   "Checks that every directory field has a description."
@@ -902,7 +894,7 @@
                                   all-opsc-dse-versions)))
     (doseq [dse-version all-dse-versions]
       (doseq [[config-id metadata] (get definitions-by-dse-version dse-version)
-              check-fn [check-for-ternary-booleans
+              check-fn [(make-check-recursive check-for-ternary-booleans)
                         check-for-directories-with-descriptions
                         check-group-names
                         check-for-invalid-attributes

@@ -18,7 +18,7 @@
                             datastax-version
                             definitions])
 
-(def valid-property-type? #{"int" "float" "string" "boolean" "list" "dict" "user_defined"})
+(def valid-property-type? #{"int" "float" "string" "boolean" "list" "dict" "user_defined" "ternary_boolean"})
 
 ;; The meaning of these keys are documented in spock/doc/definitions.md
 ;; Please update that doc when changing this list.
