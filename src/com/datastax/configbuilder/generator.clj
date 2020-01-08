@@ -38,7 +38,7 @@
   "Takes a fieldname such as :listen_address or :parent.child
   and merges the map of attributes with the existing options
   for that field.
-  Examples: (update-field :listen_address {:required false})
+  Examples: (update-field :listen_address {:description \"foo\"})
   (update-field :foo.bar {:default_value \"blue\"})"
   [definition field-key attrs]
   (let [property-path (str->property-path field-key)]

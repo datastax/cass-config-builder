@@ -250,7 +250,7 @@
          ;; a :default_value to :REMOVE. This is a marker that will cause
          ;; this field to be filtered out by the following match rule.
          ;;
-         ;; Example: {:type "string" :required false} => :REMOVE
+         ;; Example: {:type "string"} => :REMOVE
          [{:type (t :guard string?)}] :REMOVE
 
          ;; Remove fields without defaults

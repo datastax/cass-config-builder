@@ -58,7 +58,6 @@
                             :depends :enabled},
                   :cipher_suites
                            {:type "list",
-                            :required false,
                             :value_type "string"
                             :default_value
                             ["TLS_RSA_WITH_AES_128_CBC_SHA"
@@ -75,22 +74,18 @@
                             :depends :enabled},
                   :store_type
                            {:type "string",
-                            :required false,
                             :default_value "JKS",
                             :depends :enabled},
                   :algorithm
                            {:type "string",
-                            :required false,
                             :default_value "SunX509",
                             :depends :enabled},
                   :protocol
                            {:type "string",
-                            :required false,
                             :default_value "TLS",
                             :depends :enabled},
                   :require_client_auth
                            {:type "boolean",
-                            :required false,
                             :default_value false,
                             :depends :enabled},
                   :truststore
@@ -394,25 +389,7 @@
             (is (not-empty
                   (filter #(re-find re %)
                           (split-lines yaml-string)))
-                (str "could not find commented field: " (name prop)))))))
-
-    ;; verify fields in both are required...
-    (testing (format "make sure fields in %s and definition are required" config-id)
-      (let [required-props (reduce
-                             (fn [m [k v]]
-                               (if (nil? (:default_value v)) m (assoc m k v)))
-                             {}
-                             (select-keys (:properties definition)
-                                          (apply disj (last diffs) ignore-fields)))]
-        (doseq [[prop-name prop] required-props]
-          (is (true? (:required prop)) (format "Property %s should be marked as required" prop-name)))))
-
-    ;; verify other fields are not required...
-    (testing (format "fields commented in %s are not required" config-id)
-      (let [optional-props (select-keys (:properties definition)
-                                        (apply disj (second diffs) ignore-fields))]
-        (doseq [[prop-name prop] optional-props]
-          (is (not (:required prop)) (format "Property %s should not be marked as required" prop-name)))))))
+                (str "could not find commented field: " (name prop)))))))))
 
 (deftest test-dse-6-7-0-yaml
   (test-yaml-for-version "6.7.0" :cassandra-yaml #{:seeds :seed_provider :listen_address :rpc_address :commitlog_sync_period_in_ms :cluster_name})
@@ -688,36 +665,6 @@
               (check-has-order-at-level (:fields parent))))]
     (check-has-order-at-level (:properties metadata))))
 
-(defn check-boolean-property-requireds
-  "Checks that properties of type 'boolean' specify whether they're required
-
-  The web UI renders required booleans as a checkbox and optional booleans
-  as a 3-way dropdown, so omitting this field can result in an unexpected UI."
-  [metadata config-id version]
-  (letfn [(check-boolean-requireds-at-level [fields]
-            (doseq [[name field-metadata] fields]
-              (when (= "boolean" (:type field-metadata))
-                (is (or (true? (:required field-metadata))
-                        (false? (:required field-metadata)))
-                    (format "Boolean field %s must specify whether it is required, but does not do so. For definition %s v%s. Field metadata is %s"
-                            name config-id version field-metadata)))
-              (when (and (= "boolean" (:type field-metadata))
-                         (false? (:required field-metadata)))
-                (is (or (true? (:default_value field-metadata))
-                        (false? (:default_value field-metadata))
-                        (nil? (:default_value field-metadata)))
-                    (format "Optional boolean field %s must specify a default of true/false/nil, but does not do so. For definition %s v%s. Field metadata is %s"
-                            name config-id version field-metadata)))
-              (when (and (= "boolean" (:type field-metadata))
-                         (true? (:required field-metadata)))
-                (is (or (true? (:default_value field-metadata))
-                        (false? (:default_value field-metadata)))
-                    (format "Required boolean field %s must specify a default of true or false, but does not do so. For definition %s v%s. Field metadata is %s"
-                            name config-id version field-metadata))))
-            (doseq [parent (filter :fields (vals fields))]
-              (check-boolean-requireds-at-level (:fields parent))))]
-    (check-boolean-requireds-at-level (:properties metadata))))
-
 (defn check-property-types
   "Checks that the 'type' attribute is valid everywhere."
   [metadata config-id version]
@@ -899,7 +846,6 @@
                         check-group-names
                         check-for-invalid-attributes
                         check-property-types
-                        check-boolean-property-requireds
                         check-groups
                         check-field-order
                         check-has-order

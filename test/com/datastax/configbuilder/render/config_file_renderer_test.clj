@@ -45,7 +45,6 @@
             {:max-heap-size
              {:type "string"
               :constant "MAX_HEAP_SIZE"
-              :required false
               :default_value "4G"
               :disabled true},
              :not-a-constant
@@ -54,7 +53,6 @@
              :heap-newsize
              {:type "string"
               :constant "HEAP_NEWSIZE"
-              :required false
               :default_value "800M"
               :disabled true}}}
            {:max-heap-size "4G"

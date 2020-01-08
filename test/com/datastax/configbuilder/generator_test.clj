@@ -32,7 +32,6 @@
 
          {:field1
           {:type "int"
-           :required true
            :default_value 5}
 
           :field2
@@ -41,7 +40,6 @@
            :fields
            {:field3
             {:type "string"
-             :required true
              :default_value "poop"}}}}}]
 
     (testing "update non-existent field"
@@ -114,10 +112,9 @@
     (testing "top-level field with group"
       (let [modified-definition
             (add-field original-definition :f2
-                       {:type "int"
-                        :required false}
+                       {:type "int"}
                        :group "g1")]
-        (is (= {:type "int" :required false}
+        (is (= {:type "int"}
                (-> modified-definition :properties :f2)))
         (is (= ["f1" "f2"]
                (-> modified-definition :groupings first :list)))))
