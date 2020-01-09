@@ -413,7 +413,7 @@
 (defn check-transform-versions
   "Checks that a list of config-ids each have a transform file and that the
   versions for the transforms align with versions.edn"
-  [config-ids opsc-version dse-versions all-opsc-dse-versions]
+  [config-ids dse-versions]
   (let [;; Transform filenames aren't dependent on version-number, so use a
         ;; bogus dse version
         all-transforms-filenames
@@ -468,20 +468,15 @@
               (str "Expected the transforms file to exist and be a plain file: "
                    transforms-path)))
         (testing "Every transform has a versions.edn version"
-          (let [all-dse-versions (->> all-opsc-dse-versions
-                                      vals
-                                      (map :dse)
-                                      flatten
-                                      set)]
-            (doseq [transform-version (keys transforms)]
-              ;; Not every version of opscenter will make use of every transform.
-              ;; But every transform should be used by SOME version of OpsCenter
-              ;; or it's cruft and should be removed.
-              (is (contains? all-dse-versions transform-version)
-                  (format (str "Found transform for version %s in %s but "
-                               "that version isn't present in versions.edn")
-                          transform-version
-                          transforms-path)))))))))
+          (doseq [transform-version (keys transforms)]
+            ;; Not every version of opscenter will make use of every transform.
+            ;; But every transform should be used by SOME version of OpsCenter
+            ;; or it's cruft and should be removed.
+            (is (contains? dse-versions transform-version)
+                (format (str "Found transform for version %s in %s but "
+                             "that version isn't present in versions.edn")
+                        transform-version
+                        transforms-path))))))))
 
 (defmulti check-renderer (fn [metadata config-id version]
                            (-> metadata :renderer :renderer-type)))
@@ -820,25 +815,12 @@
 (deftest check-all-definitions
   "Check some properties of the definitions using versions.edn"
   (let [versions-edn-parsed (get-all-versions definitions-location)
-        modern-opsc-dse-versions (:opsc-versions versions-edn-parsed)
-        all-opsc-dse-versions modern-opsc-dse-versions
-        all-opsc-versions (keys all-opsc-dse-versions)
-        all-dse-versions (->> (map (fn [opsc-version]
-                                     (get-in all-opsc-dse-versions
-                                             [opsc-version :dse]))
-                                   all-opsc-versions)
-                              flatten
-                              set
-                              (sort-by identity version/version-is-at-least))
+        all-dse-versions (flatten-versions (get-all-versions definitions-location))
         definitions-by-dse-version (->> all-dse-versions
                                         (map (partial get-all-definitions-for-version definitions-location))
                                         (zipmap all-dse-versions))]
-    (doseq [opsc-version all-opsc-versions]
-      (let [dse-versions (get-in all-opsc-dse-versions [opsc-version :dse])]
-        (check-transform-versions (get-config-file-ids definitions-location)
-                                  opsc-version
-                                  dse-versions
-                                  all-opsc-dse-versions)))
+    (check-transform-versions (get-config-file-ids definitions-location)
+                              all-dse-versions)
     (doseq [dse-version all-dse-versions]
       (doseq [[config-id metadata] (get definitions-by-dse-version dse-version)
               check-fn [(make-check-recursive check-for-ternary-booleans)
@@ -1126,3 +1108,13 @@
                              (fn [k _] (= :tarball_default k))
                              all-defs))]
       (check-default field-path))))
+
+(deftest test-flatten-versions
+  (is (= ["6.0.0" "6.0.1" "6.5.0"]
+         (into []
+               (flatten-versions
+                {:opsc-versions
+                 {"6.0"
+                  {:dse ["6.0.0" "6.0.1"]}
+                  "6.1"
+                  {:dse ["6.0.0" "6.0.1" "6.5.0"]}}})))))

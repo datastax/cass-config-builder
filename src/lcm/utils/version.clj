@@ -43,35 +43,34 @@
     (if (= padding-length 0)
       original-vector
       (vec (apply conj original-vector
-                  (vec (replicate padding-length 0)))))))
+                  (vec (replicate padding-length (int 0))))))))
 
-(defn- version-comparator
-  "Private function that will return false if the given comparison
-   function returns false while comparing one of the sections
-   of the dse version."
-  [target-version-string version-string-to-compare comparison-function]
-  (let [original-test-vector   (version-vec version-string-to-compare)
-        original-target-vector (version-vec target-version-string)
-        max-vector-length      (max (count original-test-vector) (count original-target-vector))]
-    (loop [test-vector   (possibly-pad-vector original-test-vector max-vector-length)
-           target-vector (possibly-pad-vector original-target-vector max-vector-length)]
-      ;; Because of the padding, now both vectors are the same length
-      (cond
-        (or (empty? test-vector) (empty? target-vector))
-        true
+(def version-comparator
+  ;; Returns a java.util.Comparator capable of comparing two version strings.
+  (reify java.util.Comparator
+    (compare [this version-x version-y]
+      (let [vector-x (version-vec version-x)
+            vector-y (version-vec version-y)
+            max-vector-length (max (count vector-x) (count vector-y))]
+        (loop [vector-a (possibly-pad-vector vector-x max-vector-length)
+               vector-b (possibly-pad-vector vector-y max-vector-length)]
+          ;; Because of the padding, now both vectors are the same length
+          (cond
+            (or (empty? vector-a) (empty? vector-b))
+            0 ;; the versions are equal!
 
-        ;; Do not recur if the current elements differ
-        (not (= (first test-vector) (first target-vector)))
-        (comparison-function (first test-vector) (first target-vector))
+            ;; Do not recur if the current elements differ
+            (not (= (first vector-a) (first vector-b)))
+            (.compareTo (first vector-a) (first vector-b))
 
-        :else
-          (recur (rest test-vector) (rest target-vector))))))
+            :else
+            (recur (rest vector-a) (rest vector-b))))))))
 
 (defn version-is-at-least
   "Check if a dse-version is greater-than-or-equal-to
    a target version."
   [target-version-string version-string-to-compare]
-  (version-comparator target-version-string version-string-to-compare >))
+  (>= 0 (.compare version-comparator target-version-string version-string-to-compare)))
 
 (defn version-not-greater-than
   "Check if a dse-version is less-than-or-equal-to a target version.
@@ -81,8 +80,7 @@
   support for an existing feature, you want a less-than comparison, while this
   function provides a less-than-or-equal-to comparison."
   [target-version-string version-string-to-compare]
-  (version-comparator target-version-string version-string-to-compare <))
-
+  (<= 0 (.compare version-comparator target-version-string version-string-to-compare)))
 
 (defn version-matches?
   "Given a version pattern such as '6.0.1' or '6.0.x', tests whether the given

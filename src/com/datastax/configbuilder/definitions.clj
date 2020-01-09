@@ -24,7 +24,7 @@
 ;; Please update that doc when changing this list.
 (def field-key? #{:type :default_value :value_type :required :unit :conditional
                   :validators :depends :options :order :key_name :description
-                  :password :label :constant :disabled :add-export
+                  :password :label :constant :add-export
                   :render-without-quotes :fields :summary_fields :render_as
                   :format :readonly :static_constant :suppress-equal-sign
                   :is_directory :exclude-from-template-iterables
@@ -38,6 +38,17 @@
   [definitions-location]
   (let [versions-file (io/file definitions-location "versions.edn")]
     (edn/read-string (slurp versions-file))))
+
+(defn flatten-versions
+  "Primarily for testing definitions - takes the map from get-all-versions and
+  returns a flattened sorted set of all the DSE versions in versions.edn."
+  [all-versions-map]
+  (let [all-opsc-versions (keys (:opsc-versions all-versions-map))]
+    (->> (map (fn [opsc-version]
+                (get-in all-versions-map [:opsc-versions opsc-version :dse]))
+              all-opsc-versions)
+         flatten
+         (apply sorted-set-by v/version-comparator))))
 
 (defn get-definitions-file-suffix
   [definition-type]

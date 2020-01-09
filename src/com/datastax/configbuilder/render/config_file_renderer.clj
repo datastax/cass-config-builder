@@ -78,8 +78,7 @@
   and the value of a non-constant will be either its default
   or field value.
 
-  Constants will be rendered as commented-out if they have
-  :disabled true and no field value.
+  Constants will be ommitted if they have no field-value and no default_value.
 
   Notice that fields that do not appear in field-values will not be
   added to the result. This is because filtering of dependent fields

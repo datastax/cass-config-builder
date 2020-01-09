@@ -45,21 +45,24 @@
             {:max-heap-size
              {:type "string"
               :constant "MAX_HEAP_SIZE"
-              :default_value "4G"
-              :disabled true},
+              :default_value "4G"},
              :not-a-constant
              {:type "string"
               :default_value "abc"}
+             ;; This one has no default and no override value, thus it should not
+             ;; appear in the output at all.
+             :no-default-constant
+             {:type "string"
+              :constant "SIR_NOT_APPEARING_IN_THIS_FILM"}
              :heap-newsize
              {:type "string"
               :constant "HEAP_NEWSIZE"
-              :default_value "800M"
-              :disabled true}}}
+              :default_value "800M"}}}
            {:max-heap-size "4G"
             :heap-newsize "800M"
             :not-a-constant "def"})
-         {:max-heap-size "#MAX_HEAP_SIZE=\"4G\""
-          :heap-newsize  "#HEAP_NEWSIZE=\"800M\""
+         {:max-heap-size "MAX_HEAP_SIZE=\"4G\""
+          :heap-newsize  "HEAP_NEWSIZE=\"800M\""
           :not-a-constant "def"})))
 
 (deftest test-render-to-template
@@ -240,7 +243,6 @@ rm-key1 rm-value1
                    :log_gc false
                    :thread_priority_policy_42 true
                    :use_gc_log_file_rotation true
-                   :initiating_heap_occupancy_percent ""
                    :string_table_size 1000003
                    :print_tenuring_distribution true
                    :resize_tlb true
@@ -251,7 +253,6 @@ rm-key1 rm-value1
                    :unlock_commercial_features false
                    :cassandra_disable_auth_caches_remote_configuration false
                    :heap_dump_on_out_of_memory_error true
-                   :initial_heap_size "auto"
                    :g1r_set_updating_pause_time_percent 5
                    :java_net_prefer_ipv4_stack true
                    :cassandra_load_ring_state true
@@ -262,12 +263,9 @@ rm-key1 rm-value1
                    :print_gc_application_stopped_time true
                    :garbage_collector "G1GC"
                    :print_promotion_failure true
-                   :parallel_gc_threads ""
                    :jmx-connection-type "local-no-auth"
                    :jmx-remote-ssl false
                    :gc_log_file_size "10M"
-                   :conc_gc_threads ""
-                   :max_heap_size "auto"
                    :use_thread_priorities true
                    :enable_assertions true
                    :print_gc_date_stamps true
@@ -289,18 +287,13 @@ rm-key1 rm-value1
 -Dcassandra.join_ring=true
 -Dcassandra.load_ring_state=true
 -Dcassandra.write_survey=false
-#-XX:ConcGCThreads=
 -ea
 -XX:G1RSetUpdatingPauseTimePercent=5
 -XX:GCLogFileSize=10M
 -XX:+HeapDumpOnOutOfMemoryError
-#-Xmsauto
-#-XX:InitiatingHeapOccupancyPercent=
 -Djava.net.preferIPv4Stack=true
 -XX:MaxGCPauseMillis=500
-#-Xmxauto
 -XX:NumberOfGCLogFiles=10
-#-XX:ParallelGCThreads=
 -Xss256k
 -XX:+PerfDisableSharedMem
 -XX:+PrintGCApplicationStoppedTime

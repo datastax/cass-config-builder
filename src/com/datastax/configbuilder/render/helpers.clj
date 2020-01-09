@@ -25,8 +25,7 @@
 
   The value of the constant will be quoted if the :type is string
 
-  If :disabled is true and override-value is nil or it is equal to the
-  default_value, then the constant will be rendered with a prefix of #
+  If :override-value and :default_value are both nil, we render nothing.
 
   If :render-without-quotes is defined and true,
   strings will be rendered without their surrounding quotes
@@ -40,19 +39,13 @@
   (let [should-quote-value    (and (= (:type single-field-metadata) "string")
                                    (not (and (contains? single-field-metadata :render-without-quotes)
                                              (get single-field-metadata :render-without-quotes))))
-        constant-is-commented (and (or (nil? override-value)
-                                       (= override-value (get single-field-metadata :default_value)))
-                                   (get single-field-metadata :disabled false))
         constant-value        (if (nil? override-value)
-                                (get single-field-metadata :default_value "")
+                                (get single-field-metadata :default_value)
                                 override-value)
         constant-name         (:constant single-field-metadata)
         add-export-prefix     (if (and (contains? single-field-metadata :add-export)
                                        (get single-field-metadata :add-export))
                                 "export "
-                                "")
-        commenting-prefix     (if constant-is-commented
-                                "#"
                                 "")
         equal-sign            (if (get single-field-metadata :suppress-equal-sign false)
                                 ""
@@ -60,10 +53,11 @@
         value-quoting         (if should-quote-value
                                 "\""
                                 "")]
-    (str commenting-prefix
-         add-export-prefix
-         constant-name
-         equal-sign
-         value-quoting
-         constant-value
-         value-quoting)))
+    (if (nil? constant-value)
+      ""
+      (str add-export-prefix
+           constant-name
+           equal-sign
+           value-quoting
+           constant-value
+           value-quoting))))
