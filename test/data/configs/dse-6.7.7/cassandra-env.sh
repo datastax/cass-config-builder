@@ -66,8 +66,6 @@ calculate_system_memory_sizes()
     # calculate 1/2 ram and cap to 1024MB
     # calculate 1/4 ram and cap to capped_heap_size
     # pick the max
-
-    # set max heap size by calculating 1/2 ram and capping to 32Gb
     half_system_memory_in_mb=`expr $system_memory_in_mb / 2`
     quarter_system_memory_in_mb=`expr $half_system_memory_in_mb / 2`
     if [ "$half_system_memory_in_mb" -gt "1024" ]
@@ -123,7 +121,6 @@ if [ "$JVM_VERSION" \< "1.8" ] || [ "$JVM_VERSION" \> "1.8.2" ] ; then
     echo "DSE 6.7 requires Java 8 update 151 or later. Java $JVM_VERSION is not supported."
     exit 1;
 fi
-
 if [ "$JVM_PATCH_VERSION" -lt 151 ] ; then
     echo "DSE 6.7 requires Java 8 update 151 or later. Java 8 update $JVM_PATCH_VERSION is not supported."
     exit 1;
@@ -167,6 +164,7 @@ do
 done
 
 # Check what parameters were defined on jvm.options file to avoid conflicts
+# The DEFINED_XXX variables will be set to 0 if the pattern matches and 1 otherwise
 echo $JVM_OPTS | egrep -q "(^|\s)-Xmn"
 DEFINED_XMN=$?
 echo $JVM_OPTS | egrep -q "(^|\s)-Xmx"
@@ -177,26 +175,36 @@ echo $JVM_OPTS | egrep -q "(^|\s)-XX:\+UseConcMarkSweepGC"
 USING_CMS=$?
 echo $JVM_OPTS | egrep -q "(^|\s)-XX:\+UseG1GC"
 USING_G1=$?
+echo $JVM_OPTS | egrep -q "(^|\s)-XX:MaxDirectMemorySize="
+DEFINED_MAXDM=$?
 
-# Override these to set the amount of memory to allocate to the JVM at
-# start-up. For production use you may wish to adjust this for your
+# Override MAX_HEAP_SIZE and HEAP_NEWSIZE to set the amount of memory
+# to allocate to the JVM at start-up. Either export environment variables
+# with those names or set -Xmx -Xms and -Xmn in jvm.options
+# For production use you may wish to adjust this for your
 # environment. MAX_HEAP_SIZE is the total amount of memory dedicated
 # to the Java heap. HEAP_NEWSIZE refers to the size of the young
 # generation. Both MAX_HEAP_SIZE and HEAP_NEWSIZE should be either set
-# or not (if you set one, set the other).
+# or not if using CMS GC (if you set one, set the other).
 #
 # The main trade-off for the young generation is that the larger it
 # is, the longer GC pause times will be. The shorter it is, the more
 # expensive GC will be (usually).
-#
-# The example HEAP_NEWSIZE assumes a modern 8-core+ machine for decent pause
-# times. If in doubt, and if you do not particularly want to tweak, go with
-# 100 MB per physical CPU core.
+
+# Set env variables to the values from jvm.options if they are set
+if [ $DEFINED_XMX -eq 0 ] && [ "x$MAX_HEAP_SIZE" = "x" ]; then
+    MAX_HEAP_SIZE=`echo $JVM_OPTS | egrep -io "(^|\s)-Xmx[[:digit:]]+[G,M,K]?($|\s)" | egrep -io "[[:digit:]]+[G,M,K]?"`
+fi
+
+if [ $DEFINED_XMN -eq 0 ] && [ "x$HEAP_NEWSIZE" = "x" ]; then
+    HEAP_NEWSIZE=`echo $JVM_OPTS | egrep -io "(^|\s)-Xmn[[:digit:]]+[G,M,K]?($|\s)" | egrep -io "[[:digit:]]+[G,M,K]?"`
+fi
+
+if [ $DEFINED_MAXDM -eq 0 ] && [ "x$MAX_DIRECT_MEMORY" = "x" ]; then
+    MAX_DIRECT_MEMORY=`echo $JVM_OPTS | egrep -io "(^|\s)-XX:MaxDirectMemorySize=[[:digit:]]+[G,M,K]?($|\s)" | egrep -io "[[:digit:]]+[G,M,K]?"`
+fi
 
 # Set this to control the amount of arenas per-thread in glibc
-
-
-
 
 # only calculate the size if it's not set manually
 if [ "x$MAX_HEAP_SIZE" = "x" ] && [ "x$HEAP_NEWSIZE" = "x" -o $USING_G1 -eq 0 ]; then
@@ -216,15 +224,25 @@ then
 elif  echo "$MAX_HEAP_SIZE" | grep -qi "K$" ;
 then
     heap_size_in_mb="$((${MAX_HEAP_SIZE%?} / 1024))"
+else
+    heap_size_in_mb="$(($MAX_HEAP_SIZE / (1024 * 1024)))"
 fi
 
 memory_remaining_in_mb="$((${system_memory_in_mb} - ${heap_size_in_mb}))"
 
-if [ "x$MAX_DIRECT_MEMORY" = "x" ]; then
-   # Calculate direct memory as 1/2 of memory available after heap:
-   MAX_DIRECT_MEMORY="$((memory_remaining_in_mb / 2))M"
+# Override MAX_DIRECT_MEMORY to set the maximum amount of direct memory (NIO direct buffers)
+# that the JVM can use either by exporting an env variable called MAX_DIRECT_MEMORY or by adding
+# -XX:MaxDirectMemorySize= in jvm.options
+
+if [ "x$MAX_DIRECT_MEMORY" = "x" ] ; then
+    # Calculate direct memory as 1/2 of memory available after heap:
+    MAX_DIRECT_MEMORY="$((memory_remaining_in_mb / 2))M"
 fi
-JVM_OPTS="$JVM_OPTS -XX:MaxDirectMemorySize=$MAX_DIRECT_MEMORY"
+
+# We only set -XX:MaxDirectMemorySize if not already set in jvm.options
+if [ $DEFINED_MAXDM -ne 0 ]; then
+    JVM_OPTS="$JVM_OPTS -XX:MaxDirectMemorySize=$MAX_DIRECT_MEMORY"
+fi
 
 if [ "x$MALLOC_ARENA_MAX" = "x" ] ; then
     export MALLOC_ARENA_MAX=4

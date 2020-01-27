@@ -15,7 +15,7 @@
     ;; Check some random default values
     (is (= "/var/lib/cassandra/commitlog"
            (get-in configs [:cassandra-yaml :commitlog_directory])))
-    (is (= 1.0 (get-in configs [:cassandra-yaml :seed_gossip_probability])))))
+    (is (= 128 (get-in configs [:cassandra-yaml :io_global_queue_depth])))))
 
 (deftest test-build-configs
   (testing "for package installs"
@@ -42,7 +42,7 @@
                                           :cassandra-log-dir "/foo/log/cassandra"}})]
       (testing "- cassandra.yaml"
         (testing "default values"
-          (is (= 1.0 (get-in built-configs [:cassandra-yaml :seed_gossip_probability]))))
+          (is (= 128 (get-in built-configs [:cassandra-yaml :io_global_queue_depth]))))
         (testing "ignored fields"
           (is (nil? (get-in built-configs [:cassandra-yaml :rack]))))
         (testing "enriched fields"
@@ -55,6 +55,8 @@
           (is (= "1.1.1.4" (get-in built-configs [:cassandra-yaml :native_transport_broadcast_address])))
           (is (every? nil? (map (:cassandra-yaml built-configs) [:rpc_address :broadcast_rpc_address])))))
       (testing "- cassandra-env.sh"
+        (is (true? (get-in built-configs [:cassandra-env-sh :enable_on_out_of_memory_error])))
+        (is (= "kill -9 %p" (get-in built-configs [:cassandra-env-sh :on_out_of_memory_error])))
         (is (= 7199
                (get-in built-configs [:jvm-options :jmx-port])  ;; source
                (get-in built-configs [:cassandra-env-sh :jmx-port]))))

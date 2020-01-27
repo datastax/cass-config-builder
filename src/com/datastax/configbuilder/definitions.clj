@@ -22,7 +22,7 @@
 
 ;; The meaning of these keys are documented in spock/doc/definitions.md
 ;; Please update that doc when changing this list.
-(def field-key? #{:type :default_value :value_type :required :unit :conditional
+(def field-key? #{:type :default_value :value_type :unit :conditional
                   :validators :depends :options :order :key_name :description
                   :password :label :constant :add-export
                   :render-without-quotes :fields :summary_fields :render_as

@@ -57,17 +57,15 @@ calculate_system_memory_sizes()
         system_cpu_cores="1"
     fi
 
-    # cap here to 32765M because the JVM switches to 64 bit references at 32767M
-    # details are described in http://java-performance.info/over-32g-heap-java/
-    capped_heap_size="32765"
-
     # set max heap size based on the following
     # max(min(1/2 ram, 1024MB), min(1/4 ram, 8GB))
     # calculate 1/2 ram and cap to 1024MB
     # calculate 1/4 ram and cap to capped_heap_size
     # pick the max
 
-    # set max heap size by calculating 1/2 ram and capping to 32Gb
+    # cap here to 32765M because the JVM switches to 64 bit references at 32767M
+    # details are described in http://java-performance.info/over-32g-heap-java/
+    capped_heap_size="32765"
     half_system_memory_in_mb=`expr $system_memory_in_mb / 2`
     quarter_system_memory_in_mb=`expr $half_system_memory_in_mb / 2`
     if [ "$half_system_memory_in_mb" -gt "1024" ]
@@ -97,6 +95,7 @@ calculate_system_memory_sizes
 
 calculate_heap_sizes()
 {
+
     MAX_HEAP_SIZE="${max_heap_size_in_mb}M"
 
     # Young gen: min(max_sensible_per_modern_cpu_core * num_cores, 1/4 * heap size)
@@ -120,12 +119,12 @@ JVM_VERSION=${jvmver%_*}
 JVM_PATCH_VERSION=${jvmver#*_}
 
 if [ "$JVM_VERSION" \< "1.8" ] || [ "$JVM_VERSION" \> "1.8.2" ] ; then
-    echo "DSE 6.7 requires Java 8 update 151 or later. Java $JVM_VERSION is not supported."
+    echo "DSE 6.0 requires Java 8 update 151 or later. Java $JVM_VERSION is not supported."
     exit 1;
 fi
 
 if [ "$JVM_PATCH_VERSION" -lt 151 ] ; then
-    echo "DSE 6.7 requires Java 8 update 151 or later. Java 8 update $JVM_PATCH_VERSION is not supported."
+    echo "DSE 6.0 requires Java 8 update 151 or later. Java 8 update $JVM_PATCH_VERSION is not supported."
     exit 1;
 fi
 
@@ -167,6 +166,7 @@ do
 done
 
 # Check what parameters were defined on jvm.options file to avoid conflicts
+# The DEFINED_XXX variables will be set to 0 if the pattern matches and 1 otherwise
 echo $JVM_OPTS | egrep -q "(^|\s)-Xmn"
 DEFINED_XMN=$?
 echo $JVM_OPTS | egrep -q "(^|\s)-Xmx"
@@ -177,32 +177,42 @@ echo $JVM_OPTS | egrep -q "(^|\s)-XX:\+UseConcMarkSweepGC"
 USING_CMS=$?
 echo $JVM_OPTS | egrep -q "(^|\s)-XX:\+UseG1GC"
 USING_G1=$?
+echo $JVM_OPTS | egrep -q "(^|\s)-XX:MaxDirectMemorySize="
+DEFINED_MAXDM=$?
 
-# Override these to set the amount of memory to allocate to the JVM at
-# start-up. For production use you may wish to adjust this for your
+# Override MAX_HEAP_SIZE and HEAP_NEWSIZE to set the amount of memory
+# to allocate to the JVM at start-up. Either export environment variables
+# with those names or set -Xmx -Xms and -Xmn in jvm.options
+# For production use you may wish to adjust this for your
 # environment. MAX_HEAP_SIZE is the total amount of memory dedicated
 # to the Java heap. HEAP_NEWSIZE refers to the size of the young
 # generation. Both MAX_HEAP_SIZE and HEAP_NEWSIZE should be either set
-# or not (if you set one, set the other).
+# or not if using CMS GC (if you set one, set the other).
 #
 # The main trade-off for the young generation is that the larger it
 # is, the longer GC pause times will be. The shorter it is, the more
 # expensive GC will be (usually).
-#
-# The example HEAP_NEWSIZE assumes a modern 8-core+ machine for decent pause
-# times. If in doubt, and if you do not particularly want to tweak, go with
-# 100 MB per physical CPU core.
-
-# Set this to control the amount of arenas per-thread in glibc
 
 
 
+# Set env variables to the values from jvm.options if they are set
+if [ $DEFINED_XMX -eq 0 ] && [ "x$MAX_HEAP_SIZE" = "x" ]; then
+    MAX_HEAP_SIZE=`echo $JVM_OPTS | egrep -io "(^|\s)-Xmx[[:digit:]]+[G,M,K]?($|\s)" | egrep -io "[[:digit:]]+[G,M,K]?"`
+fi
+
+if [ $DEFINED_XMN -eq 0 ] && [ "x$HEAP_NEWSIZE" = "x" ]; then
+    HEAP_NEWSIZE=`echo $JVM_OPTS | egrep -io "(^|\s)-Xmn[[:digit:]]+[G,M,K]?($|\s)" | egrep -io "[[:digit:]]+[G,M,K]?"`
+fi
+
+if [ $DEFINED_MAXDM -eq 0 ] && [ "x$MAX_DIRECT_MEMORY" = "x" ]; then
+    MAX_DIRECT_MEMORY=`echo $JVM_OPTS | egrep -io "(^|\s)-XX:MaxDirectMemorySize=[[:digit:]]+[G,M,K]?($|\s)" | egrep -io "[[:digit:]]+[G,M,K]?"`
+fi
 
 # only calculate the size if it's not set manually
 if [ "x$MAX_HEAP_SIZE" = "x" ] && [ "x$HEAP_NEWSIZE" = "x" -o $USING_G1 -eq 0 ]; then
     calculate_heap_sizes
 elif [ "x$MAX_HEAP_SIZE" = "x" ] ||  [ "x$HEAP_NEWSIZE" = "x" -a $USING_G1 -ne 0 ]; then
-    echo "Please set or unset MAX_HEAP_SIZE and HEAP_NEWSIZE in pairs when using CMS GC (see cassandra-env.sh)"
+    echo "please set or unset MAX_HEAP_SIZE and HEAP_NEWSIZE in pairs when using CMS GC (see cassandra-env.sh)"
     exit 1
 fi
 
@@ -216,15 +226,27 @@ then
 elif  echo "$MAX_HEAP_SIZE" | grep -qi "K$" ;
 then
     heap_size_in_mb="$((${MAX_HEAP_SIZE%?} / 1024))"
+else
+    heap_size_in_mb="$(($MAX_HEAP_SIZE / (1024 * 1024)))"
 fi
 
 memory_remaining_in_mb="$((${system_memory_in_mb} - ${heap_size_in_mb}))"
 
+# Override MAX_DIRECT_MEMORY to set the maximum amount of direct memory (NIO direct buffers)
+# that the JVM can use either by exporting an env variable called MAX_DIRECT_MEMORY or by adding
+# -XX:MaxDirectMemorySize= in jvm.options
 if [ "x$MAX_DIRECT_MEMORY" = "x" ]; then
-   # Calculate direct memory as 1/2 of memory available after heap:
-   MAX_DIRECT_MEMORY="$((memory_remaining_in_mb / 2))M"
+# Calculate direct memory as 1/2 of memory available after heap:
+MAX_DIRECT_MEMORY="$((memory_remaining_in_mb / 2))M"
 fi
+
+# We only set -XX:MaxDirectMemorySize if not already set in jvm.options
+if [ $DEFINED_MAXDM -ne 0 ]; then
 JVM_OPTS="$JVM_OPTS -XX:MaxDirectMemorySize=$MAX_DIRECT_MEMORY"
+fi
+
+# Set this to control the amount of arenas per-thread in glibc
+
 
 if [ "x$MALLOC_ARENA_MAX" = "x" ] ; then
     export MALLOC_ARENA_MAX=4
@@ -233,11 +255,11 @@ fi
 # We only set -Xms and -Xmx if they were not defined on jvm.options file
 # If defined, both Xmx and Xms should be defined together.
 if [ $DEFINED_XMX -ne 0 ] && [ $DEFINED_XMS -ne 0 ]; then
-    JVM_OPTS="$JVM_OPTS -Xms${MAX_HEAP_SIZE}"
-    JVM_OPTS="$JVM_OPTS -Xmx${MAX_HEAP_SIZE}"
+     JVM_OPTS="$JVM_OPTS -Xms${MAX_HEAP_SIZE}"
+     JVM_OPTS="$JVM_OPTS -Xmx${MAX_HEAP_SIZE}"
 elif [ $DEFINED_XMX -ne 0 ] || [ $DEFINED_XMS -ne 0 ]; then
-    echo "Please set or unset -Xmx and -Xms flags in pairs on jvm.options file."
-    exit 1
+     echo "Please set or unset -Xmx and -Xms flags in pairs on jvm.options file."
+     exit 1
 fi
 
 # We only set -Xmn flag if it was not defined in jvm.options file
@@ -258,10 +280,9 @@ fi
 JVM_OPTS="$JVM_OPTS -XX:CompileCommandFile=$CASSANDRA_CONF/hotspot_compiler"
 
 # add the jamm javaagent
-JVM_OPTS="$JVM_OPTS -javaagent:$CASSANDRA_HOME/lib/jamm-0.3.2.jar"
+JVM_OPTS="$JVM_OPTS -javaagent:$CASSANDRA_HOME/lib/jamm-0.3.0.jar"
 
 
-# set jvm HeapDumpPath with CASSANDRA_HEAPDUMP_DIR
 if [ "x$CASSANDRA_HEAPDUMP_DIR" != "x" ]; then
     JVM_OPTS="$JVM_OPTS -XX:HeapDumpPath=$CASSANDRA_HEAPDUMP_DIR/cassandra-`date +%s`-pid$$.hprof"
 fi
@@ -311,7 +332,7 @@ else
     JVM_OPTS="$JVM_OPTS -Dmx4jaddress=$MX4J_ADDRESS"
 fi
 if [ "x$MX4J_PORT" != "x" ]; then
-    if echo "$MX4J_PORT" | grep -qi '\-Dmx4jport='; then
+    if echo "$MX4J_PORT" | grep -qi '\-Dmx4jport=' ; then
         # Backward compatible with the older style #13578
         JVM_OPTS="$JVM_OPTS $MX4J_PORT"
     else
@@ -324,7 +345,7 @@ fi
 # to the location of the native libraries.
 JVM_OPTS="$JVM_OPTS -Djava.library.path=$JAVA_LIBRARY_PATH"
 
-# We need to expose the available system memory so that the
+# APOLLO-342: we need to expose the available system memory so that the
 # MemoryOnlyStrategy can do proper fraction calculations.
 # See max_memory_to_lock_fraction setting in cassandra.yaml for details.
 JVM_OPTS="$JVM_OPTS -Dsystem_memory_in_mb=$system_memory_in_mb"

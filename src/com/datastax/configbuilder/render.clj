@@ -1,6 +1,5 @@
 (ns com.datastax.configbuilder.render
-  (:require [com.datastax.configbuilder.build-config :as bc]
-            [com.datastax.configbuilder.render.config-file-renderer :as renderer]
+  (:require [com.datastax.configbuilder.render.config-file-renderer :as renderer]
             [clojure.string :as str]))
 
 ;; In addition to the enriched config data, defaults, and other

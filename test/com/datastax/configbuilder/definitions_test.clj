@@ -229,8 +229,8 @@
     (let [definition (get-field-metadata definitions-location :dse-yaml helper/default-dse-version)
           defaults (definition-defaults definition)]
       (testing "top-level defaults"
-        (is (= 1024 (:back_pressure_threshold_per_core defaults)))
-        (is (= "off" (:cql_solr_query_paging defaults))))
+        (is (= 10 (:solr_resource_upload_limit_mb defaults)))
+        (is (true? (:enable_health_based_routing defaults))))
       (testing "nested defaults"
         (is (true? (-> defaults :cql_slow_log_options :enabled)))
         (is (false? (-> defaults :audit_logging_options :enabled))))
@@ -401,7 +401,7 @@
                             :dse-yaml
                             helper/default-dse-version)]
     (is (nil? (-> definition :properties :node_health :fields :enabled)))
-    (is (= 100 (-> definition
+    (is (= 3000 (-> definition
                     :properties
                     :solr_slow_sub_query_log_options
                     :fields
