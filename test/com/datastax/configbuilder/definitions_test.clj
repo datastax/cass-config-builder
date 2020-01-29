@@ -15,23 +15,6 @@
 ;; These fields are not in upstream, but we must support them anyway. :(
 (def undocumented-fields #{:disk_access_mode})
 
-(deftest test-pull-up-conditional
-  (let [parent {:child1 {:type "string"
-                         :default_value "foo"}
-                :child2 {:type "string"
-                         :depends :child1
-                         :conditional [{:eq "foo" :default_value 1}
-                                       {:eq "bar" :default_value 2}]}
-                :child3 {:type "string"
-                         :depends :child1
-                         :conditional [{:eq "bar"}]}}
-        child1 (-> parent :child1)
-        child2 (-> parent :child2)
-        child3 (-> parent :child3)]
-    (is (= 1 (-> (pull-up-conditional parent [:child2 child2]) :child2 :default_value)))
-    (is (nil? (-> (pull-up-conditional parent [:child3 child3]) :child3)))
-    (is (= parent (pull-up-conditional parent [:child1 child1])))))
-
 (deftest test-order-transitive-dependencies
   (let [fields {:b {:depends :a}
                 :d {:depends :c}
@@ -100,89 +83,6 @@
           ordered (order-transitive-dependencies fields)]
       (is (= :enabled (ffirst ordered))))))
 
-(deftest test-sanitize
-  (let [definition
-        {:properties
-         {:a {:type "string"
-              :default_value "a"}
-          :b {:type "dict"
-              :depends :a
-              :conditional [{:eq "a"
-                             :fields {:aa {:type "int"
-                                           :default_value 2}
-                                      :ab {:type "boolean"
-                                           :default_value true
-                                           :depends :aa
-                                           :conditional [{:eq 2}]}
-                                      :ac {:type "boolean"
-                                           :default_value false
-                                           :depends :aa
-                                           :conditional [{:eq 6}]}}}
-                            {:eq "b"
-                             :fields {:ba {:type "int"
-                                           :default_value 5}
-                                      :bb {:type "float"
-                                           :default_value 0.4}}}]}
-          :c {:type "dict"
-              :fields {:ca {:type "string"
-                            :default_value "c"}}
-              :depends :a
-              :conditional [{:eq "a"}]}
-          :d {:type "string"
-              :default_value "d"
-              :depends :a
-              :conditional [{:eq "a"}]}
-          :e {:type "string"
-              :default_value "e"
-              :depends :a
-              :conditional [{:eq "xxxx"}]}}}
-        sanitized (sanitize definition)]
-    (is (= 2 (-> sanitized :properties :b :fields :aa :default_value)))
-    (is (true? (-> sanitized :properties :b :fields :ab :default_value)))
-    (is (= "c" (-> sanitized :properties :c :fields :ca :default_value)))
-    (is (= "d" (-> sanitized :properties :d :default_value)))
-    (is (nil? (-> sanitized :properties :e)))
-    (is (nil? (-> sanitized :properties :b :fields :ba)))
-    (is (nil? (-> sanitized :properties :b :fields :ac))))
-  (testing "deeply nested conditionals"
-    (let [definition
-          {:properties
-           {:a {:type "dict"
-                :fields
-                      {:enabled {:type "boolean" :default_value false}
-                       :not_shown {:type "string" :default_value "Hulk"
-                                   :depends :enabled
-                                   :conditional [{:eq true}]}
-                       :also_not_shown {:type "string" :default_value "Fury"
-                                        :depends :not_shown
-                                        :conditional [{:eq "Loki"}]}}}
-            :b {:type "dict"
-                :fields
-                      {:enabled {:type "boolean" :default_value true}
-                       :shown {:type "string" :default_value "Thor"
-                               :depends :enabled
-                               :conditional [{:eq true}]}
-                       :also_shown {:type "string" :default_value "Iron Man"
-                                    :depends :shown
-                                    :conditional [{:eq "Thor"}]}
-                       :not_shown {:type "string" :default_value "Captain America"
-                                   :depends :shown
-                                   :conditional [{:eq "Black Widow"}]}}}}}
-          sanitized (sanitize definition)]
-      (is (nil? (-> sanitized :properties :a :not_shown)))
-      (is (nil? (-> sanitized :properties :a :also_not_shown)))
-      (is (= "Thor" (-> sanitized :properties :b :fields :shown :default_value)))
-      (is (= "Iron Man" (-> sanitized :properties :b :fields :also_shown :default_value)))
-      (is (nil? (-> sanitized :properties :b :fields :not_shown))))))
-
-(deftest test-replace-with-default
-  (let [thing {:type "list"
-               :value_type "dict"
-               :fields {:a {:type "string" :default_value "foo"}
-                        :b {:type "int" :default_value 1}}
-               :default_value [{:a "blah" :b 42}]}]
-    (is (= [{:a "blah" :b 42}] (replace-with-default thing)))))
-
 (deftest test-metadata-valid?
   (is (= (metadata-valid? {})
          false))
@@ -193,68 +93,6 @@
   (is (= (metadata-valid? {:foo :bar})
          true)))
 
-(deftest test-definition-defaults
-  (testing "get defaults for cassandra-yaml (for mixing with config profiles)"
-    (let [definition (get-field-metadata definitions-location :cassandra-yaml helper/default-dse-version)
-          defaults (definition-defaults definition)]
-
-      (testing "top-level defaults"
-        (is (= 2 (:max_hints_delivery_threads defaults)))
-        (is (= "stop" (:commit_failure_policy defaults)))
-        (is (false? (:cross_node_timeout defaults)))
-        (is (= ["/var/lib/cassandra/data"] (:data_file_directories defaults)))
-        (is (= 0.1 (:dynamic_snitch_badness_threshold defaults))))
-
-      (testing "nested defaults"
-        (is (false?
-              (-> defaults :client_encryption_options :enabled))))
-
-      (testing "conditionals"
-        (is (= "periodic" (:commitlog_sync defaults)))
-        (is (not (contains? defaults :commitlog_sync_batch_window_in_ms)))
-        (is (= 10000 (:commitlog_sync_period_in_ms defaults)))
-
-        (is (= "org.apache.cassandra.cache.OHCProvider" (:row_cache_class_name defaults)))
-        (is (not (contains? defaults :otc_coalescing_window_us))))
-
-      (testing "parents and children"
-        ;; 2 types of parent. One has parent_options, the other appears to assume the parent field is a boolean.
-        (is (not (contains? (:client_encryption_options defaults) :require_client_auth)))
-        (is (not (contains? (:client_encryption_options defaults) :truststore)))
-        (is (not (contains? (:client_encryption_options defaults) :truststore_password)))
-        (is (= "periodic" (:commitlog_sync defaults)))
-        (is (not (contains? defaults :commitlog_sync_batch_window_in_ms))))))
-
-  (testing "get defaults for dse-yaml"
-    (let [definition (get-field-metadata definitions-location :dse-yaml helper/default-dse-version)
-          defaults (definition-defaults definition)]
-      (testing "top-level defaults"
-        (is (= 10 (:solr_resource_upload_limit_mb defaults)))
-        (is (true? (:enable_health_based_routing defaults))))
-      (testing "nested defaults"
-        (is (true? (-> defaults :cql_slow_log_options :enabled)))
-        (is (false? (-> defaults :audit_logging_options :enabled))))
-      (testing "conditionals"
-        (is (nil? (-> defaults :audit_logging_options :cassandra_audit_writer_options)))
-        (is (nil? (:config_encryption_key_name defaults))))
-      (testing "complex defaults"
-        (let [defaults (definition-defaults
-                         {:properties
-                          {:data_directories
-                           {:type "list"
-                            :value_type "dict"
-                            :default_value [{:dir "/var/lib/dsefs/data",
-                                             :storage_weight 1.0,
-                                             :min_free_space 5368709120}]
-                            :fields
-                            {:dir {:type "string"},
-                             :storage_weight {:type "float" :default_value 1.0},
-                             :min_free_space {:type "int", :default_value 5368709120}}}}})]
-          (is (= [{:dir "/var/lib/dsefs/data"
-                   :storage_weight 1.0
-                   :min_free_space 5368709120}]
-                 (:data_directories defaults))))))))
-
 (deftest test-get-field-metadata
   (is (map?
         (get-field-metadata definitions-location :cassandra-yaml helper/default-dse-version)))
@@ -263,11 +101,6 @@
   (is (nil? (get-field-metadata definitions-location :cassandra-yaml helper/invalid-dse-version)))
   (is (thrown+? [:type :DefinitionException]
         (get-field-metadata definitions-location :foo-yaml helper/default-dse-version))))
-
-(deftest test-get-defaults
-  (let [defaults (get-defaults definitions-location helper/default-dse-version)]
-    (is (map? (:cassandra-yaml defaults)))
-    (is (map? (:dse-yaml defaults)))))
 
 (deftest test-sanitize-definition-parameter
   (is (= (sanitize-definition-parameter :dse)
@@ -577,52 +410,16 @@
   "Run various authentication sanity-checks.
   The main purpose is to assert that DSE has authentication enabled by default.
   "
-  (let [def-defaults (definition-defaults metadata)]
-    (cond
-      ;; DSE 5.1.2 and greater should default to auth being enabled
-      (version/version-is-at-least "5.1.2" version)
-      (cond
-        (when (= config-id :dse-yaml)
-          (is (= true (get-in def-defaults [:authentication_options :enabled]))
-              (format "DSE version %s does not have :authentication_options :enabled defaulted to true in :dse-yaml."
-                      version)))
-        (when (= config-id :cassandra-yaml)
-          (is (= "com.datastax.bdp.cassandra.auth.DseAuthenticator" (get-in def-defaults [:authenticator]))
-              (format "DSE version %s does not have :authenticator defaulted to com.datastax.bdp.cassandra.auth.DseAuthenticator in cassandra-yaml."
-                      version))))
-
-      ;; Sadly, versions 5.1.0 and 5.1.1 do not have authentication on by default
-      ;; This cannot be fixed because it could negatively impact customers
-      ;; with existing clusters.  See OPSC-12443 for more details.
-      (version/version-is-at-least "5.1.0" version)
-      (cond
-        (when (= config-id :dse-yaml)
-          (is (= false (get-in def-defaults [:authentication_options :enabled]))
-              (format "DSE version %s does not have :authentication_options :enabled defaulted to false in :dse-yaml and this version should be false."
-                      version)))
-        (when (= config-id :cassandra-yaml)
-          (is (= "com.datastax.bdp.cassandra.auth.DseAuthenticator" (get-in def-defaults [:authenticator]))
-              (format "DSE version %s does not have :authenticator defaulted to com.datastax.bdp.cassandra.auth.DseAuthenticator in cassandra-yaml."
-                      version))))
-
-      ;; DSE 5.0.1 up to but not including 5.1.0, have auth by default
-      (version/version-is-at-least "5.0.1" version)
-      (cond
-        (when (= config-id :dse-yaml)
-          (is (= true (get-in def-defaults [:authentication_options :enabled]))
-              (format "DSE version %s does not have :authentication_options :enabled defaulted to true in :dse-yaml."
-                      version)))
-        (when (= config-id :cassandra-yaml)
-          (is (= "com.datastax.bdp.cassandra.auth.DseAuthenticator" (get-in def-defaults [:authenticator]))
-              (format "DSE version %s does not have :authenticator defaulted to com.datastax.bdp.cassandra.auth.DseAuthenticator in cassandra-yaml."
-                      version))))
-
-      ;; DSE versions below 5.0.1 should have PasswordAuthenticator enabled
-      :else
-      (when (= config-id :cassandra-yaml)
-        (is (= "PasswordAuthenticator" (get-in def-defaults [:authenticator]))
-            (format "DSE version %s does not have :authenticator defaulted to PasswordAuthenticator in cassandra-yaml."
-                    version))))))
+  (let [def-defaults (fill-in-defaults {} metadata)]
+    ;; All DSE versions currently supported should have auth enabled.
+    (when (= config-id :dse-yaml)
+      (is (= true (get-in def-defaults [:authentication_options :enabled]))
+          (format "DSE version %s does not have :authentication_options :enabled defaulted to true in :dse-yaml."
+                  version)))
+    (when (= config-id :cassandra-yaml)
+      (is (= "com.datastax.bdp.cassandra.auth.DseAuthenticator" (get-in def-defaults [:authenticator]))
+          (format "DSE version %s does not have :authenticator defaulted to com.datastax.bdp.cassandra.auth.DseAuthenticator in cassandra-yaml."
+                  version)))))
 
 (defn check-field-order
   "Checks that fields mentioned in the :order key actually exist (no typos)"
@@ -738,8 +535,12 @@
   (testing (format "Testing defaults for DSE=%s config-id=%s"
                    dse-version
                    config-id)
-    (let [def-defaults (definition-defaults metadata)]
-      (is def-defaults))))
+    ;; Some configs have no default values.
+    (when-not (#{:dse-env-sh
+                 :cassandra-rackdc-properties}
+               config-id)
+      (let [def-defaults (fill-in-defaults {} metadata)]
+        (is (not (empty? def-defaults)))))))
 
 (defmulti check-tarball-paths
   "Makes sure that :tarball-path is present and either empty string or
@@ -857,6 +658,15 @@
   (is (not (check-depends? {}
                            {:depends :a
                             :conditional [{:eq 1}]}))))
+
+(deftest test-config-file-valid?
+  (testing "config-file-valid?"
+    (is (config-file-valid? definitions-location :cassandra-yaml "6.0.0"))
+    (is (config-file-valid? definitions-location :cassandra-yaml "6.0.8"))
+
+    ;; jvm-options is not valid after 6.8.0
+    (is (false? (config-file-valid? definitions-location :jvm-options "6.8.0")))
+    (is (config-file-valid? definitions-location :jvm-options "6.0.0"))))
 
 (deftest test-fill-in-defaults
   (testing "top-level defaults, no deps"
@@ -976,15 +786,6 @@
                                                  :conditional [{:eq 1}]}
                                             :aa {:type "boolean"}}}}})))))
 
-  (testing "config-file-valid?"
-    ;; this has [:all]
-    (is (config-file-valid? definitions-location :cassandra-yaml "6.0.0"))
-    (is (config-file-valid? definitions-location :cassandra-yaml "6.0.8"))
-
-    ;; jvm-options is not valid after 6.8.0
-    (is (false? (config-file-valid? definitions-location :jvm-options "6.8.0")))
-    (is (config-file-valid? definitions-location :jvm-options "6.0.0")))
-
   (testing "user_defined type"
     (let [definition
           {:properties
@@ -1003,6 +804,38 @@
       (is (= {:a {:foo {:c "blarg"}}}
              (fill-in-defaults {:a {:foo {:c "blarg"}}}
                                definition)))))
+
+  (testing "dict type with dependency"
+    (let [definition
+          {:properties
+           {:enabled
+            {:type "boolean" :default_value false}
+            :refresh_rate_ms {:type "int"
+                              :default_value 10000
+                              :depends :enabled
+                              :conditional [{:eq true}]}
+            :driver {:type "dict"
+                     :depends :enabled
+                     :conditional [{:eq true}]
+                     :fields {:sink {:type "boolean" :default_value false}
+                              :connectorSource {:type "boolean" :default_value false}
+                              :jvmSource {:type "boolean" :default_value false}
+                              :stateSource {:type "boolean" :default_value false}}}}}]
+      (is (= {:enabled false}
+             (fill-in-defaults {} definition)))))
+
+  (testing "user_defined type with dependency"
+    (let [definition
+          {:properties
+           {:enabled {:type "boolean" :default_value false}
+            :a {:type "user_defined"
+                :value_type "dict"
+                :depends :enabled
+                :conditional [{:eq true}]
+                :fields
+                {:b {:type "int" :default_value 1}
+                 :c {:type "string"}}}}}]
+      (is (= {:enabled false} (fill-in-defaults {} definition)))))
 
   (testing "complex defaults dict type"
     (let [definition

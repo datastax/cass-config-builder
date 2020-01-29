@@ -148,8 +148,17 @@
           ;; dse.yaml has enabled: false for audit_logging_options, yet
           ;; it includes uncommented nested properties.
           "audit_logging_options"
-          {"cassandra_audit_writer_options" {"batch_size" 1
-                                             "flush_time" 1}}
+          {"cassandra_audit_writer_options" {:* 1}}
+
+          ;; dse.yaml has values for this tree even though runner_type
+          ;; is 'default', which would disable these children
+          "spark_process_runner" {"run_as_runner_options" {:* 1}}
+
+          ;; dse.yaml has spark_application_info_options disabled by default
+          "spark_application_info_options"
+          {"refresh_rate_ms" 1
+           "driver" {:* 1}
+           "executor" {:* 1}}
 
           ;;;; cassandra.yaml skips
           ;; this property is empty (nil) in cassandra.yaml, but it's

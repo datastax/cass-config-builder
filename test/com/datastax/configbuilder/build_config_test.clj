@@ -72,7 +72,19 @@
         (is (= {:dc "dc-1" :rack "rack-1"}
                (:cassandra-rackdc-properties built-configs))))
       (testing "- dse-env.sh"
-        (is (= "/foo/log/cassandra" (get-in built-configs [:dse-env-sh :cassandra-log-dir]))))))
+        (is (= "/foo/log/cassandra" (get-in built-configs [:dse-env-sh :cassandra-log-dir]))))
+
+      (testing "Dependent fields should not be present unless their condition is satisfied"
+        (is (false? (get-in built-configs [:dse-yaml :spark_cluster_info_options :enabled])))
+        (is (= :missing (get-in built-configs
+                                [:dse-yaml :spark_cluster_info_options :refresh_rate_ms]
+                                :missing)))
+        ;; Try a nested dict with a dependency. Use not instead of false? because this
+        ;; enabled field is a ternary_boolean with nil default value.
+        (is (not (get-in built-configs [:dse-yaml :dsefs_options :enabled])))
+        (is (= :missing (get-in built-configs
+                                [:dse-yaml :dsefs_options :gossip_options]
+                                :missing))))))
 
   (testing "for tarball installs"
     (let [built-configs

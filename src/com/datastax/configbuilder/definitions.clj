@@ -229,125 +229,8 @@
                                 (prn-str (map first fields)))}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Default value extraction ;;
+;; Tarball default values   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn replace-with-default
-  "Replace map values with the default_value or removes them."
-  [thing]
-  (match [thing]
-
-         ;; Converts all maps with :default_value to the value of the
-         ;; :default_value key in the map
-         ;;
-         ;; Example: {:type "string" :default_value "foo"} => foo
-         [{:default_value default-val}] default-val
-
-         ;; Converts all dict type maps with :fields by "pulling up"
-         ;; the fields map.
-         ;;
-         ;; Example: {:type "dict" :fields {:blah {...}}} => {:blah {...}}
-         [{:type "dict" :fields fields}] fields
-
-         ;; FIXME: the parent_options case...
-         ;; right now this is not a problem, as request_scheduler default
-         ;; is NoScheduler, and the field defaults under request_scheduler_options
-         ;; aren't currently filtering through anyway. However, this may be an
-         ;; issue someday, depending on definitions changes
-         ;; [{:type "dict" :parent_options popts}] (apply merge (map values popts))
-
-
-         ;; Replaces all maps containing :type != "dict", but without
-         ;; a :default_value to :REMOVE. This is a marker that will cause
-         ;; this field to be filtered out by the following match rule.
-         ;;
-         ;; Example: {:type "string"} => :REMOVE
-         [{:type (t :guard string?)}] :REMOVE
-
-         ;; Remove fields without defaults
-         ;;
-         ;; Example: {:foo  "default1"
-         ;;           :blah :REMOVE}  ==> {:foo "default1"}
-         [(x :guard map?)] (into {} (for [[k v] thing
-                                          :when (not= :REMOVE v)]
-                                      [k v]))
-
-         ;; Default rule. Just pass thru.
-         ;;
-         ;; Example: "blah" => "blah"
-         [_] thing))
-
-(defn pull-up-conditional
-  "Pulls a matching conditional's attributes up into it's containing map.
-  It looks in parent for the key specified by the child's :depends value
-  (thus making it a sibling). It looks at the sibling's :default_value and
-  uses that to find a matching entry in the :conditional vector of the
-  child. If there is a match, it is 'pulled-up', otherwise the child is
-  removed from the parent."
-  [parent-fields [child-key child-field]]
-  (let [depends-value (get-in parent-fields [(:depends child-field) :default_value])]
-    (cond
-      ;; no dependency, leave unchanged
-      (not (contains? child-field :depends))
-      parent-fields
-
-      ;; either the parent has been removed, is missing, or has no default
-      (nil? depends-value)
-      (dissoc parent-fields child-key)
-
-      :else
-      ;; If we ever need to support more than :eq, split the predicate out into
-      ;; it's own function (and maybe use core.match)
-      (if-let [matching-conditional (some #(if (= depends-value (:eq %)) %)
-                                          (:conditional child-field))]
-        ;; found a match, replace child in parent
-        (assoc parent-fields child-key
-                             ;; merge fields from the conditional into the child
-                             (merge (dissoc child-field :conditional :depends)
-                                    (dissoc matching-conditional :eq)))
-        ;; no match found, remove child from parent
-        (dissoc parent-fields child-key)))))
-
-(defn sanitize
-  "Sanitizes (removes certain properties) a definition tree by inspecting
-  dependent fields and checking their conditional values against the default
-  value of the field they depend on. As a limitation, properties can only
-  depend on sibling fields."
-  [definitions]
-  (letfn [;; sanitize-parent is where it starts. It pulls up conditionals at the current level,
-          ;; then does the same thing to all of the children.
-          (sanitize-parent [parent-fields]
-            (let [sanitized-parent
-                  (->> parent-fields
-                       (order-transitive-dependencies)
-                       (filter dependent-field?) ;; only process dependent fields
-                       (reduce pull-up-conditional parent-fields))]
-              (reduce sanitize-children sanitized-parent sanitized-parent)))
-
-          ;; if the child has a :fields map, we process those [grandchildren]
-          (sanitize-children [parent-fields [child-key child-map]]
-            (if (:fields child-map)
-              (assoc-in parent-fields [child-key :fields]
-                        (sanitize-parent (:fields child-map)))
-              parent-fields))]
-    (update definitions :properties sanitize-parent)))
-
-(defn definition-defaults
-  "Extracts defaults from a given definition by walking the tree
-  and applying replace-with-default at every node in post-order
-  traversal. It then sanitizes the resulting config."
-  [definitions]
-  (postwalk replace-with-default
-            (:properties (sanitize definitions))))
-
-(defn get-defaults
-  "Get all the definition defaults for this version."
-  [definitions-location version]
-  (into {} (for [config-file-id (get-config-file-ids definitions-location)
-                 :let [field-metadata (get-field-metadata definitions-location config-file-id version)]
-                 :when field-metadata]
-             [config-file-id
-              (definition-defaults field-metadata)])))
 
 (defn use-tarball-defaults
   "Any field which has a :tarball_default will have that value copied
@@ -435,10 +318,10 @@
   the value of the parent field in the config against the
   conditionals. Returns true if the dependency is satisfied
   (it also returns true if there is no dependency).
-  Note: conditional attribute of the field map is a vector of
+  Note: conditional attribute of the field-meta is a vector of
   the form [{:eq value1} {:eq value2}]. The dependency is satisfied
   if any of the conditions match."
-  [config {:keys [depends conditional] :as field-map}]
+  [config {:keys [depends conditional] :as field-meta}]
   (or
     (nil? depends) ;; no dependency, return true
     (and (not-empty conditional)
@@ -452,12 +335,12 @@
   and a single field-map entry and returns the config either
   unchanged, or with the field assoc'd with the appropriate
   default"
-  [cfg [field-name field-map]]
+  [cfg [field-name field-meta]]
   (if (and
         (not (contains? cfg field-name))
-        (contains? field-map :default_value)
-        (check-depends? cfg field-map))
-    (assoc cfg field-name (:default_value field-map))
+        (contains? field-meta :default_value)
+        (check-depends? cfg field-meta))
+    (assoc cfg field-name (:default_value field-meta))
     cfg))
 
 (defn fill-in-defaults
@@ -473,27 +356,36 @@
                     (order-transitive-dependencies fields)))
 
           (dict?
-            [{:keys [type] :as field-map}]
+            [{:keys [type] :as field-meta}]
             (= "dict" type))
 
           (user-defined-dict?
-            [{:keys [type value_type] :as field-map}]
+            [{:keys [type value_type] :as field-meta}]
             (and (= "user_defined" type)
                  (= "dict" value_type)))
+
+          (child-filter
+            [config [field-name field-meta]]
+            ;; Need a filter function that takes a config-data map (at the appropriate depth) and
+            ;; a [k v] pair from definitions fields-map. The v must have a :fields entry and it must
+            ;; pass the check-depends? fn. This means either it has no dependency, or it's dependency
+            ;; is satisfied in config-data.
+            (and (:fields field-meta)
+                 (check-depends? config field-meta)))
 
           (fill-in-deep
             [config fields-map]
             (reduce
-              (fn [config [field-name field-map]]
+              (fn [config [field-name field-meta]]
                 (let [child-config
                       (cond
-                        (dict? field-map)
+                        (dict? field-meta)
                         (fill-in-deep (get config field-name)
-                                      (:fields field-map))
+                                      (:fields field-meta))
 
-                        (user-defined-dict? field-map)
+                        (user-defined-dict? field-meta)
                         (data/map-values
-                          #(fill-in-deep % (:fields field-map))
+                          #(fill-in-deep % (:fields field-meta))
                           (get config field-name)) ;; this is the map with user-defined keys
 
                         :else nil)]
@@ -507,8 +399,9 @@
               (fill-in-at-current-level config fields-map)
 
               ;; only recur for dict type fields
-              (filter (comp :fields val) fields-map)))]
+              (filter (partial child-filter config) fields-map)))]
     (fill-in-deep config (:properties definition))))
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;
