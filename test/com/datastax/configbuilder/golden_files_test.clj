@@ -10,7 +10,9 @@
              [com.datastax.configbuilder.build-config :as bc]
              [com.datastax.configbuilder.render :as r]
              [lcm.utils.yaml :as yaml]
-             [lcm.utils.data :refer [map-paths]]))
+             [lcm.utils.data :refer [map-paths]])
+  (:import
+    [java.io IOException]))
 
 ;; This namespace checks generated default config output against golden files which originated
 ;; from the DSE repo. Some of these golden files have been modified to match the slight
@@ -116,7 +118,10 @@
 (defn view-diff
   [file-a file-b]
   (when use-graphical-diff
-    (sh "meld" (str file-a) (str file-b))))
+    (try
+      (sh "meld" (str file-a) (str file-b))
+      (catch IOException e
+        (print "File diff tool 'meld' not found on $PATH")))))
 
 (defmulti diff-test
   (fn [dse-version config-file-id]

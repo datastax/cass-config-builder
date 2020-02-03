@@ -18,7 +18,7 @@
                 <withJansi>true</withJansi>
                 <target>System.err</target>
                 <encoder>
-                    <pattern>%highlight(%-5level) %green(%date{yyyy-MM-dd HH:mm:ss}) %c: %msg%n</pattern>
+                    <pattern>%highlight(%-5level) %green(%date{ISO8601}) %c: %msg%n</pattern>
                 </encoder>
             </appender>
         </then>
@@ -28,7 +28,7 @@
             <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
                 <target>System.err</target>
                 <encoder>
-                    <pattern>%-5level %date{yyyy-MM-dd HH:mm:ss} %c: %msg%n</pattern>
+                    <pattern>%-5level %date{ISO8601} %c: %msg%n</pattern>
                 </encoder>
             </appender>
         </then>
