@@ -10,6 +10,7 @@
             [slingshot.test :refer :all]
             [com.datastax.configbuilder.test-data :refer [definitions-location]]
             [com.datastax.configbuilder.test-helpers :as helper]
+            [com.datastax.configbuilder.build-config :refer [get-management-field-id]]
             [com.datastax.configbuilder.definitions :refer :all]))
 
 ;; These fields are not in upstream, but we must support them anyway. :(
@@ -326,12 +327,14 @@
         profile-context {:definitions {config-id metadata}
                          :definitions-location definitions-location
                          :datastax-version version}
+        management-field-id (get-management-field-id config-id)
         template-file (get-template-filename profile-context config-id)
         template (get-template profile-context config-id)]
     ;; Only ensure all fields are used if template_iterables is not used
     (if (not (.contains template "template_iterables"))
       (doseq [field property-fields]
-        (is (.contains template (name field))
+        (is (or (= field management-field-id)
+                (.contains template (name field)))
             (format "Template '%s' does not reference property '%s' for version '%s'"
                     template-file (name field) version))))))
 

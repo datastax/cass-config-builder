@@ -93,6 +93,31 @@
    config-data
    definitions))
 
+(defn get-management-field-id
+  "Get the keyword of the management field for this config-file-id."
+  [config-file-id]
+  (keyword (str "lcm-manage--" (name config-file-id))))
+
+(defn remove-unmanaged-config-files!
+  "Remove config-ids that the user has decided not to manage.
+   Each config file can be removed by a field of the following format:
+
+   lcm-manage--(config file id)
+
+   If a field with that naming convention exists and is false,
+   then the config file corresponding to the id will not be rendered."
+  [config-data]
+  (let [all-config-files (keys config-data)]
+    (reduce
+      (fn [current-config-data [config-key config-definitions]]
+        (let [management-field (get-management-field-id config-key)]
+           (if (and (contains? (get config-data config-key) management-field)
+                    (= false (get-in config-data [config-key management-field])))
+             (dissoc current-config-data config-key)
+             current-config-data)))
+      config-data
+      config-data)))
+
 (defmulti enrich-config
           "Enriches the config-data for a given config-key with data from the
           model-info attributes."
@@ -425,5 +450,6 @@
     (->> config-data
          (valid-config-keys? definitions-data)
          (with-defaults definitions-data)
+         (remove-unmanaged-config-files!)
          (prune-config-keys)
          (build-configs* definitions-data))))

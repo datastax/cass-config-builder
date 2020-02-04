@@ -99,6 +99,14 @@
       (testing "- dse-env.sh"
         (is (= "/home/targ/dse/log/cassandra" (get-in built-configs [:dse-env-sh :cassandra-log-dir])))))))
 
+(deftest test-unmanage-config-file
+  (let [built-configs
+        (bc/build-configs (test-data/get-definitions-data helper/default-dse-version)
+                          ;; we should be able to unmanage a file based on config-file-id
+                          {:cassandra-yaml {:lcm-manage--cassandra-yaml false}})]
+    (is (= true (contains? built-configs :dse-yaml)))
+    (is (= false (contains? built-configs :cassandra-yaml)))))
+
 (deftest test-build-configs-no-enrichment
   (testing "configs with no enrichment"
     (let [config-data {:cluster-info    {:name             "test-cluster-1"
