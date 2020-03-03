@@ -13,15 +13,16 @@
 (def definitions-location "../definitions/resources")
 
 (defn- load-definitions-data
-  [definitions-data datastax-version]
-  (if (contains? definitions-data datastax-version)
+  [definitions-data product datastax-version]
+  (if (contains? definitions-data (list product datastax-version))
     definitions-data ;; already cached - return unmodified
     (assoc definitions-data
-           datastax-version
+           (list product datastax-version)
            {:definitions-location definitions-location
             :datastax-version datastax-version
             :definitions (d/get-all-definitions-for-version
                           definitions-location
+                          product
                           datastax-version)})))
 
 (def ^{:private true}
@@ -30,11 +31,13 @@
 
 (defn get-definitions-data
   "Gets a cached definitions-data map for the given dse version"
-  ([datastax-version]
-   (get (swap! definitions-data load-definitions-data datastax-version)
-        datastax-version))
   ([]
-   (get-definitions-data helper/default-dse-version)))
+   (get-definitions-data helper/default-dse-version))
+  ([datastax-version]
+   (get-definitions-data "dse" datastax-version))
+  ([product datastax-version]
+   (get (swap! definitions-data load-definitions-data product datastax-version)
+        (list product datastax-version))))
 
 (defn reset-definitions-data!
   "Clears the builder state map and will force the next

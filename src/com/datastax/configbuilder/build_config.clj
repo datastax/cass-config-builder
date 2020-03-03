@@ -42,7 +42,7 @@
 
 (defn valid-config-keys?
   "Are the keys in config-data valid for this version of DSE?"
-  [{:keys [definitions datastax-version]}
+  [{:keys [definitions product datastax-version] :or {product "dse"}}
    config-data]
   (let [valid-key? (into (conj model-info-keys :address-yaml)
                          (keys definitions))
@@ -128,22 +128,22 @@
   ;; default behavior is to do no enrichment
   config-data)
 
-(def ^:private pre-60-field-mappings {:native_transport_address           :rpc_address
-                                      :native_transport_broadcast_address :broadcast_rpc_address})
+(def ^:private pre-dse-60-field-mappings {:native_transport_address           :rpc_address
+                                          :native_transport_broadcast_address :broadcast_rpc_address})
 
 (defn ensure-correct-address-field-names
   "DSE 6.0 renamed rpc_address to native_transport_address and
   broadcast_rpc_address to native_transport_broadcast_address.
-  We need to make sure we are using the old names if the version
-  is < 6.0."
-  [datastax-version fields]
-  (if (v/version-is-at-least "6.0" datastax-version)
+  We need to make sure we are using the old names if the DSE
+  version is < 6.0 or if we are using OSS Cassandra."
+  [product datastax-version fields]
+  (if (and (= "dse" product) (v/version-is-at-least "6.0" datastax-version))
     fields
     (reduce (fn [new-fields [from-field-name to-field-name]]
               (dissoc (assoc new-fields to-field-name (get new-fields from-field-name))
                       from-field-name))
             fields
-            pre-60-field-mappings)))
+            pre-dse-60-field-mappings)))
 
 ;; Note, this includes both old and new address field names. We use this
 ;; to extract the node private properties, regardless of DSE version. When
@@ -160,7 +160,7 @@
                           :auto_bootstrap})
 
 (defmethod enrich-config :cassandra-yaml
-  [{:keys [datastax-version]}
+  [{:keys [datastax-version product] :or {product "dse"}}
    config-key
    {:keys [cluster-info node-info] :as config-data}]
   (let [seed-provider [{:class_name "org.apache.cassandra.locator.SimpleSeedProvider"
@@ -169,6 +169,7 @@
         ;; Note, we are using the new address field names since DSE 6.0+
         additional-cassandra-yaml-fields
         (ensure-correct-address-field-names
+          product
           datastax-version
           (-> node-info
               (select-keys node-private-props)
@@ -181,7 +182,7 @@
         (update config-key merge additional-cassandra-yaml-fields))))
 
 (defmethod enrich-config :cassandra-env-sh
-  [{:keys [datastax-version]}
+  [{:keys [datastax-version product] :or {product "dse"}}
    config-key
    {:keys [jvm-options jvm-server-options] :as config-data}]
   (update config-data config-key merge

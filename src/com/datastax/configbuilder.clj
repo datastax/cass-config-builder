@@ -9,11 +9,12 @@
     :init init
     :state state
     :prefix "configbuilder-"
-    :constructors {[String String]                          ;; definitions-location, datastax-version
-                   []}                                      ;; super constructor takes no params
+    :constructors {[String String] []                       ;; definitions-location, datastax-version
+                   [String String String] []}               ;; definitions-location, product, datastax-version
     :main false
     :methods [[getDefinitions [] String]
               [getDatastaxVersion [] String]
+              [getProduct [] String]
               [buildConfigs [String] String]
               [renderConfigs [String] String]]) )
 
@@ -44,10 +45,13 @@
                     (bc/build-configs definitions-data config-data)))
 
 (defn configbuilder-init
-  [definitions-location datastax-version]
-  [[]                                                       ;; super constructor takes no params
-   ;; Note, this state is immutable. Hopefully we can keep it that way!
-   (d/get-definitions-data definitions-location datastax-version)])
+  ([definitions-location datastax-version]
+   [[]                                                      ;; super constructor takes no params
+    ;; Note, this state is immutable. Hopefully we can keep it that way!
+    (d/get-definitions-data definitions-location datastax-version)])
+  ([definitions-location product datastax-version]
+    [[]
+     (d/get-definitions-data definitions-location product datastax-version)]))
 
 (defn- call-api [definitions-data
                  ^IFn api-fn
@@ -60,6 +64,9 @@
 
 (defn configbuilder-getDefinitions [this]
   (json/generate-string (:definitions (.state this))))
+
+(defn configbuilder-getProduct [this]
+  (:product (.state this)))
 
 (defn configbuilder-getDatastaxVersion [this]
   (:datastax-version (.state this)))

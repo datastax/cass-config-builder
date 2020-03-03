@@ -15,6 +15,7 @@
 ;; Caching these records avoids the expense of loading
 ;; defintions from disk over and over again.
 (defrecord DefinitionsData [definitions-location
+                            product
                             datastax-version
                             definitions])
 
@@ -91,35 +92,43 @@
      :field-metadata .edn
      :transforms     -transforms.edn
   "
-  [config-file-id product-version definition-type]
-  ;; ensure input is sanitized
-  (let [sane-config-file-id (sanitize-definition-parameter config-file-id)]
-    (if (= :transforms definition-type)
-      (str sane-config-file-id
-           "-dse-transforms.edn")
-      (str sane-config-file-id
-           "-dse-" product-version
-           (get-definitions-file-suffix definition-type)))))
+  ([config-file-id product-version definition-type]
+   (build-definitions-filename config-file-id "dse" product-version definition-type))
+  ([config-file-id product product-version definition-type]
+   ;; ensure input is sanitized
+   (let [sane-config-file-id (sanitize-definition-parameter config-file-id)]
+     (if (= :transforms definition-type)
+       (str sane-config-file-id
+            "-" product "-transforms.edn")
+       (str sane-config-file-id
+            "-" product "-" product-version
+            (get-definitions-file-suffix definition-type))))))
 
 (defn build-definitions-directory
   "Returns a java.io.File that represents the definitions file directory
   for the given parameters."
-  [definitions-location config-file-id]
-  (let [sane-config-file-id (sanitize-definition-parameter config-file-id)]
-    (io/file definitions-location sane-config-file-id "dse")))
+  ([definitions-location config-file-id]
+   (build-definitions-directory definitions-location "dse" config-file-id))
+  ([definitions-location product config-file-id]
+   (let [sane-config-file-id (sanitize-definition-parameter config-file-id)]
+     (io/file definitions-location sane-config-file-id product))))
 
 (defn get-definitions-file
   "Returns a java.io.File for the given parameters. Uses the definitions component to
   find the right file."
-  [definitions-location config-file-id product-version definition-type]
-  (let [definitions-filename  (build-definitions-filename
+  ([definitions-location config-file-id product-version definition-type]
+   (get-definitions-file definitions-location config-file-id "dse" product-version definition-type))
+  ([definitions-location config-file-id product product-version definition-type]
+   (let [definitions-filename (build-definitions-filename
                                 config-file-id
+                                product
                                 product-version
                                 definition-type)
-        definitions-directory (build-definitions-directory
-                                definitions-location
-                                config-file-id)]
-    (io/file definitions-directory definitions-filename)))
+         definitions-directory (build-definitions-directory
+                                 definitions-location
+                                 product
+                                 config-file-id)]
+     (io/file definitions-directory definitions-filename))))
 
 (defn metadata-valid?
   "Returns true if the given field-metadata is valid.
@@ -131,21 +140,24 @@
 (defn get-field-metadata
   "Get field metadata for the given parameters or the
    empty string."
-  [definitions-location config-file-id product-version]
-  (let [transforms-file   (get-definitions-file
-                            definitions-location
-                            config-file-id
-                            product-version
-                            :transforms)]
-    (if (or (nil? transforms-file) (not (.exists transforms-file)))
-      (throw+ {:type
-               :DefinitionException
-               :message
-               (str "There is no definition transforms file for "
-                    (name config-file-id)
-                    " for version " product-version)})
-      (let [all-metadata (gen/generate-unsweetened-metadata transforms-file)]
-        (v/get-fallback all-metadata product-version)))))
+  ([definitions-location config-file-id product-version]
+   (get-field-metadata definitions-location config-file-id "dse" product-version))
+  ([definitions-location config-file-id product product-version]
+   (let [transforms-file (get-definitions-file
+                           definitions-location
+                           config-file-id
+                           product
+                           product-version
+                           :transforms)]
+     (if (or (nil? transforms-file) (not (.exists transforms-file)))
+       (throw+ {:type
+                :DefinitionException
+                :message
+                (str "There is no definition transforms file for "
+                     (name config-file-id)
+                     " for version " product-version)})
+       (let [all-metadata (gen/generate-unsweetened-metadata transforms-file)]
+         (v/get-fallback all-metadata product-version))))))
 
 (defn config-file-valid?
   "Returns true if this configuration file is valid
@@ -159,37 +171,46 @@
 (defn get-config-file-ids
       "Scans the definitions directory to collect config file ids. The
       directories must be named correctly for this to work."
-      [definitions-location]
-      (let [top-dir (io/file definitions-location)]
-           (->> (file-seq top-dir)
-                (filter #(and (.isDirectory %)
-                              (.isDirectory (io/file % "dse"))))
-                (map #(.getName %))
-                (map keyword))))
+  ([definitions-location]
+   (get-config-file-ids definitions-location "dse"))
+  ([definitions-location product]
+   (let [top-dir (io/file definitions-location)]
+     (->> (file-seq top-dir)
+          (filter #(and (.isDirectory %)
+                        (.isDirectory (io/file % product))))
+          (map #(.getName %))
+          (map keyword)))))
 
 (defn get-all-definitions-for-version
       "Gets all the definition field metadata for a given version."
-      [definitions-location version]
-      (let [all-files (into {}
-                            (for [config-file-id (get-config-file-ids definitions-location)
-                                  :let [field-metadata (get-field-metadata
-                                                         definitions-location
-                                                         config-file-id
-                                                         version)]
-                                  :when field-metadata]
-                                 [config-file-id field-metadata]))]
-           (into {} (filter #(metadata-valid? (second %))
-                            all-files))))
+  ([definitions-location version]
+   (get-all-definitions-for-version definitions-location "dse" version))
+  ([definitions-location product version]
+   (let [all-files (into {}
+                         (for [config-file-id (get-config-file-ids definitions-location product)
+                               :let [field-metadata (get-field-metadata
+                                                      definitions-location
+                                                      config-file-id
+                                                      product
+                                                      version)]
+                               :when field-metadata]
+                           [config-file-id field-metadata]))]
+     (into {} (filter #(metadata-valid? (second %))
+                      all-files)))))
 
 (defn get-definitions-data
   "Gets a DefinitionsData record for a given version."
-  [definitions-location version]
-  (->DefinitionsData
-   definitions-location
-   version
-   (get-all-definitions-for-version
-    definitions-location
-    version)))
+  ([definitions-location version]
+   (get-definitions-data definitions-location "dse" version))
+  ([definitions-location product version]
+   (->DefinitionsData
+     definitions-location
+     product
+     version
+     (get-all-definitions-for-version
+       definitions-location
+       product
+       version))))
 
 (defn order-transitive-dependencies
   "Orders depends fields such that transitive dependencies (A->B->C) work
@@ -260,7 +281,7 @@
    for the given parameters. This function expects the
    caller to pass in a map containing the datastax-version
    and definitions for that version."
-  [{:keys [definitions datastax-version]} config-key]
+  [{:keys [definitions product datastax-version] :or {product "dse"}} config-key]
   (let [field-metadata (get definitions config-key)
         template-name  (get-in field-metadata
                                [:renderer :template])]
@@ -276,10 +297,10 @@
 (defn get-template
   "Get template string for the given parameters. Throws DefinitionException
   if the template cannot be found."
-  [{:keys [datastax-version definitions-location] :as definitions-data}
+  [{:keys [datastax-version product definitions-location] :or {product "dse"} :as definitions-data}
    config-key]
   (let [template-filename (get-template-filename definitions-data config-key)
-        definitions-directory (build-definitions-directory definitions-location config-key)
+        definitions-directory (build-definitions-directory definitions-location product config-key)
         template-file      (io/file definitions-directory template-filename)]
     (if (not (.exists template-file))
       (throw+ {:type :DefinitionException
@@ -494,9 +515,11 @@
   Creates the new base file (does not update the transforms file).
   This intended for use at the REPL or wrapped for command line usage.
   It is not production code and therefore not covered by unit tests."
-  [definitions-location file-id version]
-  (let [field-metadata (get-field-metadata definitions-location file-id version)
-        new-metadata-file (get-definitions-file definitions-location file-id version :field-metadata)]
-    (with-open [w (io/writer new-metadata-file)]
-      (pprint field-metadata w))))
+  ([definitions-location file-id version]
+   (convert-to-basefile definitions-location file-id "dse" version))
+  ([definitions-location file-id product version]
+   (let [field-metadata (get-field-metadata definitions-location file-id product version)
+         new-metadata-file (get-definitions-file definitions-location file-id product version :field-metadata)]
+     (with-open [w (io/writer new-metadata-file)]
+       (pprint field-metadata w)))))
 

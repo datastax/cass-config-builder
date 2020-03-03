@@ -4,6 +4,7 @@
            [java.nio.file.attribute FileAttribute]))
 
 (def default-dse-version "6.0.0")
+(def default-cassandra-version "4.0.0")
 (def invalid-dse-version "3.0.1")
 
 (def temp-dir (atom nil))

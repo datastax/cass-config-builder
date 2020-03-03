@@ -17,6 +17,51 @@
            (get-in configs [:cassandra-yaml :commitlog_directory])))
     (is (= 128 (get-in configs [:cassandra-yaml :io_global_queue_depth])))))
 
+(deftest test-build-configs-for-oss-cassandra
+  (let [datacenter-info {:name "dc-1"}
+        node-info {:name                               "node-1"
+                   :rack                               "rack-1"
+                   :listen_address                     "1.1.1.1"
+                   :broadcast_address                  "1.1.1.2"
+                   :native_transport_address           "1.1.1.3"
+                   :native_transport_broadcast_address "1.1.1.4"
+                   :initial_token                      "123XYZ"
+                   :auto_bootstrap                     true}
+        cluster-info {:name  "test-cluster-1"
+                      :seeds "1,2,3"}
+        definitions-data (test-data/get-definitions-data "cassandra" helper/default-cassandra-version)
+        built-configs (bc/build-configs definitions-data
+                                        {:cluster-info    (assoc cluster-info :product "cassandra" :datastax-version helper/default-cassandra-version)
+                                         :node-info       node-info
+                                         :datacenter-info datacenter-info
+                                         :cassandra-yaml  {:num_tokens 201}})]
+
+    (testing "does anything at all work even a little bit"
+      (is (= 201 (get-in built-configs [:cassandra-yaml :num_tokens]))))
+    (testing "do we use rpc_address instead of DSE's new config name native_transport_address"
+      (is (= "1.1.1.3" (get-in built-configs [:cassandra-yaml :rpc_address]))))))
+
+(deftest test-ensure-correct-address-field-names
+  (let [expected-old {:rpc_address           "1.1.1.1"
+                      :broadcast_rpc_address "2.2.2.2"
+                      :some_other_prop       "some value"}
+        expected-new {:native_transport_address           "1.1.1.1"
+                      :native_transport_broadcast_address "2.2.2.2"
+                      :some_other_prop                    "some value"}
+        fields {:native_transport_address           "1.1.1.1"
+                :native_transport_broadcast_address "2.2.2.2"
+                :some_other_prop                    "some value"}]
+    (testing "DSE 6.0.0+ uses new names"
+
+      (is (= (bc/ensure-correct-address-field-names "dse" "6.0.0" fields)
+             expected-new)))
+    (testing "DSE 5.0.0 uses old names"
+      (is (= (bc/ensure-correct-address-field-names "dse" "5.0.0" fields)
+             expected-old)))
+    (testing "Cassandra uses old names"
+      (is (= (bc/ensure-correct-address-field-names "cassandra" "7.0.0" fields)
+             expected-old)))))
+
 (deftest test-build-configs
   (testing "for package installs"
     (let [datacenter-info {:name "dc-1"

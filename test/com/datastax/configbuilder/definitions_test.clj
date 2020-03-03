@@ -170,7 +170,13 @@
              {:datastax-version helper/default-dse-version
               :definitions-location definitions-location
               :definitions (get-all-definitions-for-version definitions-location helper/default-dse-version)}
-             :cassandra-env-sh))))
+             :cassandra-env-sh)))
+  ;; make sure we account for product when looking up template
+  (is (seq (get-template {:datastax-version helper/default-cassandra-version
+                          :product "cassandra"
+                          :definitions-location definitions-location
+                          :definitions (get-all-definitions-for-version definitions-location "cassandra" helper/default-cassandra-version)}
+                         :jvm-server-options))))
 
 (deftest test-get-all-definitions-for-version
   (testing "all definitions for default dse version"
