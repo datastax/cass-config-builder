@@ -20,6 +20,7 @@
            (list product datastax-version)
            {:definitions-location definitions-location
             :datastax-version datastax-version
+            :product product
             :definitions (d/get-all-definitions-for-version
                           definitions-location
                           product

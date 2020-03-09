@@ -176,7 +176,7 @@
                           :product "cassandra"
                           :definitions-location definitions-location
                           :definitions (get-all-definitions-for-version definitions-location "cassandra" helper/default-cassandra-version)}
-                         :jvm-server-options))))
+                         :cassandra-env-sh))))
 
 (deftest test-get-all-definitions-for-version
   (testing "all definitions for default dse version"

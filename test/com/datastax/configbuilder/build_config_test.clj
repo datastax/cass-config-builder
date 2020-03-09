@@ -17,6 +17,27 @@
            (get-in configs [:cassandra-yaml :commitlog_directory])))
     (is (= 128 (get-in configs [:cassandra-yaml :io_global_queue_depth])))))
 
+(deftest test-allow-custom-seed-provider
+  (let [datacenter-info {:name "dc-1"}
+        node-info {:name                               "node-1"
+                   :rack                               "rack-1"
+                   :listen_address                     "1.1.1.1"
+                   :broadcast_address                  "1.1.1.2"
+                   :native_transport_address           "1.1.1.3"
+                   :native_transport_broadcast_address "1.1.1.4"
+                   :initial_token                      "123XYZ"
+                   :auto_bootstrap                     true}
+        cluster-info {:name  "test-cluster-1"}
+        definitions-data (test-data/get-definitions-data "cassandra" helper/default-cassandra-version)
+        built-configs (bc/build-configs definitions-data
+                                        {:cluster-info    (assoc cluster-info :product "cassandra" :datastax-version helper/default-cassandra-version)
+                                         :node-info       node-info
+                                         :datacenter-info datacenter-info
+                                         :cassandra-yaml  {:seed_provider [{:class_name "org.apache.cassandra.locator.K8SeedProvider"
+                                                                            :parameters [{:seeds "1,2,3"}]}]}})]
+    (is (= "org.apache.cassandra.locator.K8SeedProvider" (get-in built-configs [:cassandra-yaml :seed_provider 0 :class_name])))
+    (is (= "1,2,3" (get-in built-configs [:cassandra-yaml :seed_provider 0 :parameters 0 :seeds])))))
+
 (deftest test-build-configs-for-oss-cassandra
   (let [datacenter-info {:name "dc-1"}
         node-info {:name                               "node-1"

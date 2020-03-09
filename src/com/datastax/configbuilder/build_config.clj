@@ -159,13 +159,17 @@
                           :initial_token
                           :auto_bootstrap})
 
+(defn seed-provider-class [product product-version]
+  (if (= "cassandra" product)
+    "org.apache.cassandra.locator.K8SeedProvider"
+    "org.apache.cassandra.locator.SimpleSeedProvider"))
+
 (defmethod enrich-config :cassandra-yaml
   [{:keys [datastax-version product] :or {product "dse"}}
    config-key
    {:keys [cluster-info node-info] :as config-data}]
-  (let [seed-provider [{:class_name "org.apache.cassandra.locator.SimpleSeedProvider"
-                        :parameters [{:seeds (:seeds cluster-info)}]}]
-
+  (let [default-seed-provider [{:class_name (seed-provider-class product datastax-version)
+                                :parameters [{:seeds (:seeds cluster-info)}]}]
         ;; Note, we are using the new address field names since DSE 6.0+
         additional-cassandra-yaml-fields
         (ensure-correct-address-field-names
@@ -174,7 +178,9 @@
           (-> node-info
               (select-keys node-private-props)
               (assoc :cluster_name (:name cluster-info)
-                     :seed_provider seed-provider)))]
+                     :seed_provider (get-in config-data
+                                            [config-key :seed_provider]
+                                            default-seed-provider))))]
     (-> config-data
         ;; make sure no pre-existing values leak into the config output
         (update config-key #(apply dissoc % node-private-props))
