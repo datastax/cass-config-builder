@@ -9,7 +9,6 @@
 
 (def oss-prop-fixes {:authorizer
                      {:type          "string",
-                      :required      true,
                       :options
                                      [{:label "AllowAllAuthorizer", :value "AllowAllAuthorizer"}
                                       {:label "CassandraAuthorizer", :value "CassandraAuthorizer"}],
@@ -17,7 +16,6 @@
 
                      :authenticator
                      {:type          "string",
-                      :required      true,
                       :options
                                      [{:label "AllowAllAuthenticator", :value "AllowAllAuthenticator"}
                                       {:label "PasswordAuthenticator", :value "PasswordAuthenticator"}],
@@ -25,7 +23,6 @@
 
                      :role_manager
                      {:type          "string",
-                      :required      true,
                       :options
                                      [{:label "CassandraRoleManager",
                                        :value "org.apache.cassandra.auth.CassandraRoleManager"}],
@@ -154,9 +151,9 @@
         ;; TODO: This needs to be reviewed
         definition-prop-fixes (merge oss-prop-fixes
                                      {:enable_sasi_indexes
-                                      {:type "boolean", :required false, :default_value true}
+                                      {:type "boolean", :default_value true}
                                       :enable_materialized_views
-                                      {:type "boolean", :required false, :default_value true}})
+                                      {:type "boolean", :default_value true}})
         allowed-keys-missing (into #{:seed_provider
                                      :listen_address
                                      :rpc_address
@@ -224,7 +221,10 @@
 (defn remove-required [schema]
   (clojure.walk/postwalk (fn [form]
                            (if (map? form)
-                             (dissoc form :required)
+                             (dissoc (if-not (:required form)
+                                       (dissoc form :default_value)
+                                       form)
+                                     :required)
                              form))
                          schema))
 
