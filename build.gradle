@@ -17,6 +17,7 @@
  */
 plugins {
   id 'dev.clojurephant.clojure' version '0.5.0'
+  id 'com.github.johnrengelman.shadow' version '5.2.0'
   id 'maven-publish'
 }
 
@@ -93,6 +94,11 @@ dependencies {
     testImplementation "junit:junit:4.12"
 }
 
+jar {
+    manifest {
+        attributes 'Main-Class': 'com.datastax.configbuilder.K8SOperatorConfigBuilder'
+    }
+}
 
 publishing {
   publications {

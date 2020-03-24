@@ -9,9 +9,9 @@
     :init init
     :state state
     :prefix "configbuilder-"
+    :main false
     :constructors {[String String] []                       ;; definitions-location, datastax-version
                    [String String String] []}               ;; definitions-location, product, datastax-version
-    :main false
     :methods [[getDefinitions [] String]
               [getDatastaxVersion [] String]
               [getProduct [] String]
