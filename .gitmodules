@@ -1,0 +1,3 @@
+[submodule "cass-config-definitions"]
+	path = cass-config-definitions
+	url = git@github.com:datastax/cass-config-definitions.git

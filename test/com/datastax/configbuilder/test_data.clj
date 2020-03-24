@@ -10,7 +10,7 @@
 ;; If it is necessary to evict the cache, the test should
 ;; call reset-definitions-data!.
 
-(def definitions-location "../definitions/resources")
+(def definitions-location "cass-config-definitions/resources")
 
 (defn- load-definitions-data
   [definitions-data product datastax-version]

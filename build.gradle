@@ -1,10 +1,47 @@
 /*
- * Copyright DataStax, Inc.
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Please see the included license file for details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
+plugins {
+  id 'dev.clojurephant.clojure' version '0.5.0'
+  id 'maven-publish'
+}
 
-description = "DataStax Configuration Builder Library"
+description = "Cassandra/DSE Configuration Builder Library"
+group = 'datastax'
+version = '0.1.0-SNAPSHOT'
+
+repositories {
+  mavenCentral()
+  maven {
+    name = 'clojars'
+    url = 'https://repo.clojars.org'
+  }
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+clojure {
+    builds {
+        main {
+            aotAll()
+        }
+    }
+}
 
 sourceSets {
     main {
@@ -40,16 +77,39 @@ configurations {
 }
 
 dependencies {
-    compile "org.clojure:core.match:0.3.0-alpha5"
-    compile "org.clojure:core.memoize:0.5.9"
-    compile "slingshot:slingshot:0.12.2"
-    compile "org.yaml:snakeyaml:1.23"
-    compile "cheshire:cheshire:5.8.0"
-    compile ("selmer:selmer:0.9.7") { // templating lib
+    implementation "org.clojure:clojure:1.10.1"
+    implementation "org.clojure:core.match:0.3.0-alpha5"
+    implementation "org.clojure:core.memoize:0.5.9"
+    implementation "slingshot:slingshot:0.12.2"
+    implementation "org.yaml:snakeyaml:1.23"
+    implementation "cheshire:cheshire:5.8.0"
+    implementation ("selmer:selmer:0.9.7") { // templating lib
         exclude module: 'hiccups'
         exclude module: 'cheshire'
         exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
         exclude group: 'com.fasterxml.jackson.dataformat', module: 'jackson-dataformat-smile'
     }
-    testCompile "junit:junit:4.12"
+    devImplementation "org.clojure:tools.namespace:0.3.0-alpha4"
+    testImplementation "junit:junit:4.12"
+}
+
+
+publishing {
+  publications {
+    main(MavenPublication) {
+      from components.java
+    }
+  }
+
+  /* TODO: point to artifactory */
+  repositories {
+    maven {
+      name = 'clojars'
+      url = 'https://repo.clojars.org'
+      credentials {
+        username = System.env['CLOJARS_USER']
+        password = System.env['CLOJARS_PASSWORD']
+      }
+    }
+  }
 }

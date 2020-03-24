@@ -7,7 +7,7 @@
 -Dcassandra.force_default_indexing_page_size=true
 -Dcassandra.join_ring=true
 -Dcassandra.load_ring_state=true
--Dcassandra.write_survey=true
+-Dcassandra.write_survey=false
 -ea
 -XX:G1RSetUpdatingPauseTimePercent=5
 -XX:GCLogFileSize=10M
