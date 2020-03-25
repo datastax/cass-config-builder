@@ -100,21 +100,52 @@ jar {
     }
 }
 
-publishing {
-  publications {
-    main(MavenPublication) {
-      from components.java
-    }
-  }
+/*
+The credentials are provided typically in 'gradle.properties' in the project root.
+If needed, the repo location and the credentials could be changed.
+Place the values in 'gradle.properties' or pass them via the command line with -P switches.
+*/
 
-  /* TODO: point to artifactory */
-  repositories {
-    maven {
-      name = 'clojars'
-      url = 'https://repo.clojars.org'
-      credentials {
-        username = System.env['CLOJARS_USER']
-        password = System.env['CLOJARS_PASSWORD']
+def propertyExists(name) {
+    settings.hasProperty(name) || System.properties[(name)] != null
+}
+def propertiesExist(names) {
+    names.every { propertyExists(it)}
+}
+def propertyValue(name) {
+    settings.hasProperty(name) ? settings.getProperty(name) : System.properties[(name)]
+}
+
+if (propertiesExist(['datastaxRepositoryUsername', 'datastaxRepositoryPassword'])) {
+  publishing {
+    publications {
+      mavenJava(MavenPublication) {
+        groupId = 'com.datastax.configbuilder'
+        artifactId = 'configbuilder'
+        version = project.version.replace('SNAPSHOT', "-${gitCurrentHeadId().substring(0, 7)}")
+
+        from components.java
+
+        pom {
+          name = 'ConfigBuilder'
+          description = 'A library to produce cassandra configuration files.'
+          licenses {
+            license {
+              name = 'The Apache License, Version 2.0'
+              url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+            }
+          }
+        }
+      }
+    }
+
+    repositories {
+      maven {
+        url = propertyValue('datastaxArtifactRepositoryUrl')
+        credentials {
+          username propertyValue('datastaxRepositoryUsername')
+          password propertyValue('datastaxRepositoryPassword')
+        }
       }
     }
   }
