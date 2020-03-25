@@ -100,53 +100,39 @@ jar {
     }
 }
 
-/*
-The credentials are provided typically in 'gradle.properties' in the project root.
-If needed, the repo location and the credentials could be changed.
-Place the values in 'gradle.properties' or pass them via the command line with -P switches.
-*/
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      groupId = 'com.datastax.configbuilder'
+      artifactId = 'configbuilder'
+      //version = project.version.replace('SNAPSHOT', "-${gitCurrentHeadId().substring(0, 7)}")
+      version = "0.1.0"
 
-def propertyExists(name) {
-    settings.hasProperty(name) || System.properties[(name)] != null
-}
-def propertiesExist(names) {
-    names.every { propertyExists(it)}
-}
-def propertyValue(name) {
-    settings.hasProperty(name) ? settings.getProperty(name) : System.properties[(name)]
-}
+      from components.java
 
-if (propertiesExist(['datastaxRepositoryUsername', 'datastaxRepositoryPassword'])) {
-  publishing {
-    publications {
-      mavenJava(MavenPublication) {
-        groupId = 'com.datastax.configbuilder'
-        artifactId = 'configbuilder'
-        version = project.version.replace('SNAPSHOT', "-${gitCurrentHeadId().substring(0, 7)}")
-
-        from components.java
-
-        pom {
-          name = 'ConfigBuilder'
-          description = 'A library to produce cassandra configuration files.'
-          licenses {
-            license {
-              name = 'The Apache License, Version 2.0'
-              url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-            }
+      pom {
+        name = 'ConfigBuilder'
+        description = 'A library to produce cassandra configuration files.'
+        licenses {
+          license {
+            name = 'The Apache License, Version 2.0'
+            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
           }
         }
       }
     }
+  }
 
-    repositories {
-      maven {
-        url = propertyValue('datastaxArtifactRepositoryUrl')
+  repositories {
+    maven {
+      if (repoUrl) {
+        url = repoUrl
         credentials {
-          username propertyValue('datastaxRepositoryUsername')
-          password propertyValue('datastaxRepositoryPassword')
+          username repoUsername
+          password repoPassword
         }
       }
     }
   }
 }
+

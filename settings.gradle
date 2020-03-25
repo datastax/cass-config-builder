@@ -1,1 +1,29 @@
 rootProject.name = 'cass-config-builder'
+
+/*
+The credentials are provided typically in 'gradle.properties' in the project root.
+If needed, the repo location and the credentials could be changed.
+Place the values in 'gradle.properties' or pass them via the command line with -P switches.
+*/
+
+def propertyExists(name) {
+    settings.hasProperty(name) || System.properties[(name)] != null
+}
+def propertiesExist(names) {
+    names.every { propertyExists(it)}
+}
+def propertyValue(name) {
+    settings.hasProperty(name) ? settings.getProperty(name) : System.properties[(name)]
+}
+
+if (propertiesExist(['datastaxRepositoryUsername', 'datastaxRepositoryPassword'])) {
+    def repoUrl = propertyValue('datastaxArtifactRepositoryUrl')
+    def repoUsername = propertyValue('datastaxRepositoryUsername')
+    def repoPassword = propertyValue('datastaxRepositoryPassword')
+
+    gradle.beforeProject { proj ->
+        proj.ext.repoUrl = repoUrl
+        proj.ext.repoUsername = repoUsername
+        proj.ext.repoPassword = repoPassword
+    }
+}
