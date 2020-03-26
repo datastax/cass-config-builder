@@ -103,8 +103,8 @@ jar {
 publishing {
   publications {
     mavenJava(MavenPublication) {
-      groupId = 'com.datastax.configbuilder'
-      artifactId = 'configbuilder'
+      groupId = 'com.datastax'
+      artifactId = 'cass-config-builder'
       //version = project.version.replace('SNAPSHOT', "-${gitCurrentHeadId().substring(0, 7)}")
       version = "0.1.0"
 
