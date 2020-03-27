@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 plugins {
+  id 'com.bmuschko.docker-remote-api' version '4.6.2'
   id 'dev.clojurephant.clojure' version '0.5.0'
   id 'com.github.johnrengelman.shadow' version '5.2.0'
   id 'maven-publish'
@@ -136,3 +137,32 @@ publishing {
   }
 }
 
+
+mainClassName="com.datastax.configbuilder.config.main"
+
+assemble.dependsOn shadowJar
+
+import com.bmuschko.gradle.docker.tasks.image.*
+
+task copyDockerBuildCtx(type: Sync) {
+    into "$buildDir/docker"
+    from ("cass-config-definitions/resources") {
+        into "definitions"
+    }
+    from 'docker'
+    from shadowJar
+}
+
+task dockerImage(type: DockerBuildImage, group: 'Docker', description: 'Build cass-config-builder docker image') {
+    dependsOn copyDockerBuildCtx
+    inputDir = copyDockerBuildCtx.destinationDir
+    tags.add("$imagePrefix/${project.name}:${version.replace('SNAPSHOT', "-${gitCurrentHeadId().substring(0, 7)}").replaceAll('[^a-zA-Z0-9\\.\\-_]', '_')}")
+}
+
+task pushDockerImage(type: DockerPushImage, group: 'Docker', description: "Push Docker image to registry specified with 'dockerRegistry' property") {
+    dependsOn dockerImage
+    imageName = dockerImage.tags.getOrNull().asList().first()
+}
+
+assemble.dependsOn dockerImage
+check.dependsOn assemble
