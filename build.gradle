@@ -22,9 +22,18 @@ plugins {
   id 'maven-publish'
 }
 
+import java.text.DateFormat
+import java.text.SimpleDateFormat
+
+def getDate() {
+    DateFormat df = new SimpleDateFormat("yyyyMMdd");
+
+    return df.format(new Date());
+}
+
 description = "Cassandra/DSE Configuration Builder Library"
 group = 'datastax'
-version = '0.1.0-SNAPSHOT'
+version = '1.0.0-' + getDate()
 
 repositories {
   mavenCentral()
@@ -63,6 +72,27 @@ sourceSets {
     }
     dev {
         clojure.srcDirs = ['dev']
+    }
+}
+
+// Docker publishing
+
+ext.set('imagePrefix', (project.hasProperty('datastaxDockerRegistry') ? ( "$datastaxDockerRegistry/" - 'http://' - 'https://') : "") + 'datastax')
+
+docker {
+    registryCredentials {
+        if (project.hasProperty('datastaxDockerRegistry')) {
+            url = project.datastaxDockerRegistry
+        }
+        if (project.hasProperty('datastaxDockerRegistryUsername'))
+        {
+            username = project.datastaxDockerRegistryUsername
+        }
+
+        if (project.hasProperty('datastaxDockerRegistryPassword'))
+        {
+            password = project.datastaxDockerRegistryPassword
+        }
     }
 }
 
@@ -107,7 +137,7 @@ publishing {
       groupId = 'com.datastax'
       artifactId = 'cass-config-builder'
       //version = project.version.replace('SNAPSHOT', "-${gitCurrentHeadId().substring(0, 7)}")
-      version = "0.1.0"
+      version = "1.0.0-" + getDate()
 
       from components.java
 
@@ -156,11 +186,12 @@ task copyDockerBuildCtx(type: Sync) {
 task dockerImage(type: DockerBuildImage, group: 'Docker', description: 'Build cass-config-builder docker image') {
     dependsOn copyDockerBuildCtx
     inputDir = copyDockerBuildCtx.destinationDir
-    images.add("datastax/cass-config-builder:${version}")
+    images.add("${imagePrefix}/cass-config-builder:${version}")
 }
 
 task pushDockerImage(type: DockerPushImage, group: 'Docker', description: "Push Docker image to registry specified with 'dockerRegistry' property") {
     dependsOn dockerImage
+    images = dockerImage.images.getOrNull().asList()
 }
 
 assemble.dependsOn dockerImage
