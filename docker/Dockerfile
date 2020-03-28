@@ -1,7 +1,7 @@
 FROM openjdk:8u212-jre-slim-stretch
 
 ENV USER_UID=1001 \
-    USER_NAME=dse-operator \
+    USER_NAME=cass-operator \
     HOME=/home/$USER_NAME
 
 # Install the uber jar
