@@ -136,7 +136,6 @@ publishing {
     mavenJava(MavenPublication) {
       groupId = 'com.datastax'
       artifactId = 'cass-config-builder'
-      //version = project.version.replace('SNAPSHOT', "-${gitCurrentHeadId().substring(0, 7)}")
       version = "1.0.0-" + getDate()
 
       from components.java
@@ -166,9 +165,6 @@ publishing {
     }
   }
 }
-
-
-//mainClassName="com.datastax.configbuilder.config.main"
 
 assemble.dependsOn shadowJar
 
