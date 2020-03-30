@@ -16,10 +16,10 @@ def propertyValue(name) {
     settings.hasProperty(name) ? settings.getProperty(name) : System.properties[(name)]
 }
 
-if (propertiesExist(['datastaxRepositoryUsername', 'datastaxRepositoryPassword'])) {
-    def repoUrl = propertyValue('datastaxArtifactRepositoryUrl')
-    def repoUsername = propertyValue('datastaxRepositoryUsername')
-    def repoPassword = propertyValue('datastaxRepositoryPassword')
+if (propertiesExist(['mavenRepositoryUsername', 'mavenRepositoryPassword'])) {
+    def repoUrl = propertyValue('mavenRepositoryUrl')
+    def repoUsername = propertyValue('mavenRepositoryUsername')
+    def repoPassword = propertyValue('mavenRepositoryPassword')
 
     gradle.beforeProject { proj ->
         proj.ext.repoUrl = repoUrl

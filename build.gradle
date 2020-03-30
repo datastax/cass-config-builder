@@ -77,21 +77,21 @@ sourceSets {
 
 // Docker publishing
 
-ext.set('imagePrefix', (project.hasProperty('datastaxDockerRegistry') ? ( "$datastaxDockerRegistry/" - 'http://' - 'https://') : "") + 'datastax')
+ext.set('imagePrefix', (project.hasProperty('dockerRegistry') ? ( "$dockerRegistry/" - 'http://' - 'https://') : "") + 'datastax')
 
 docker {
     registryCredentials {
-        if (project.hasProperty('datastaxDockerRegistry')) {
-            url = project.datastaxDockerRegistry
+        if (project.hasProperty('dockerRegistry')) {
+            url = project.dockerRegistry
         }
-        if (project.hasProperty('datastaxDockerRegistryUsername'))
+        if (project.hasProperty('dockerRegistryUsername'))
         {
-            username = project.datastaxDockerRegistryUsername
+            username = project.dockerRegistryUsername
         }
 
-        if (project.hasProperty('datastaxDockerRegistryPassword'))
+        if (project.hasProperty('dockerRegistryPassword'))
         {
-            password = project.datastaxDockerRegistryPassword
+            password = project.dockerRegistryPassword
         }
     }
 }
