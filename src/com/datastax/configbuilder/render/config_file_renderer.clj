@@ -1,3 +1,6 @@
+;; Copyright DataStax, Inc.
+;; Please see the included license file for details.
+
 (ns com.datastax.configbuilder.render.config-file-renderer
   (:require [com.datastax.configbuilder.definitions :as d]
             [com.datastax.configbuilder.render.helpers :as rh]

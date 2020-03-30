@@ -1,3 +1,6 @@
+;; Copyright DataStax, Inc.
+;; Please see the included license file for details.
+
 (ns com.datastax.configbuilder.operator-test
   (:require [com.datastax.configbuilder.operator :as sut]
             [com.datastax.configbuilder.test-helpers :as helper]

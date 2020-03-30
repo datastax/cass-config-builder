@@ -1,3 +1,6 @@
+;; Copyright DataStax, Inc.
+;; Please see the included license file for details.
+
 (ns com.datastax.configbuilder.definitions
     (:require [clojure.java.io :as io]
               [clojure.string :as str]

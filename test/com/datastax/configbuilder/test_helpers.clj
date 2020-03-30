@@ -1,3 +1,6 @@
+;; Copyright DataStax, Inc.
+;; Please see the included license file for details.
+
 (ns com.datastax.configbuilder.test-helpers
   (:require [clojure.java.io :as io])
   (:import [java.nio.file Files SimpleFileVisitor FileVisitResult]

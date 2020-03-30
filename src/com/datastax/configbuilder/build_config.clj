@@ -1,3 +1,6 @@
+;; Copyright DataStax, Inc.
+;; Please see the included license file for details.
+
 (ns com.datastax.configbuilder.build-config
   (:require [com.datastax.configbuilder.definitions :as d]
             [slingshot.slingshot :refer [throw+]]
