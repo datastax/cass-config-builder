@@ -16,9 +16,12 @@ The cass-config-builder can be consumed as either a jar artifact or inside of a 
 
 This task uses the following gradle settings:
 
-mavenRepositoryUrl       Maven repository to publish to
-mavenRepositoryUsername  Username for publishing
-mavenRepositoryPassword  Password for publishing
+
+Setting|Description
+---|---
+mavenRepositoryUrl|       Maven repository to publish to
+mavenRepositoryUsername|  Username for publishing
+mavenRepositoryPassword|  Password for publishing
 
 # Build the Docker image
 
@@ -30,6 +33,8 @@ mavenRepositoryPassword  Password for publishing
 
 This task uses the following gradle settings:
 
-dockerRegistry          Docker registry to publish to
-dockerRegistryUsername  Username for publishing
-dockerRegistryPassword  Password for publishing
+Setting|Description
+---|---
+dockerRegistry|          Docker registry to publish to
+dockerRegistryUsername|  Username for publishing
+dockerRegistryPassword|  Password for publishing
