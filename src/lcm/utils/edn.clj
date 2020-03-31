@@ -1,3 +1,6 @@
+;; Copyright DataStax, Inc.
+;; Please see the included license file for details.
+
 (ns lcm.utils.edn
   (:require [clojure.edn :as edn]
             [clojure.core.memoize :as memo]))

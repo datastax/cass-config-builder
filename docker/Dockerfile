@@ -1,3 +1,6 @@
+# Copyright DataStax, Inc.
+# Please see the included license file for details.
+
 FROM openjdk:8u212-jre-slim-stretch
 
 ENV USER_UID=1001 \

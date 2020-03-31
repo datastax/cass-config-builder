@@ -1,3 +1,6 @@
+;; Copyright DataStax, Inc.
+;; Please see the included license file for details.
+
 (ns lcm.utils.version-test
   (:require [lcm.utils.version :as version]
             [slingshot.test :refer :all]

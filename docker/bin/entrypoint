@@ -1,4 +1,6 @@
 #!/bin/sh -e
+# Copyright DataStax, Inc.
+# Please see the included license file for details.
 
 # This is documented here:
 # https://docs.openshift.com/container-platform/3.11/creating_images/guidelines.html#openshift-specific-guidelines

@@ -1,3 +1,6 @@
+;; Copyright DataStax, Inc.
+;; Please see the included license file for details.
+
 (ns com.datastax.configbuilder
   (:require [cheshire.core :as json]
             [com.datastax.configbuilder.definitions :as d]

@@ -1,3 +1,6 @@
+;; Copyright DataStax, Inc.
+;; Please see the included license file for details.
+
 (ns lcm.utils.data
   (:refer-clojure :exclude [uuid?])
   (:require [clojure.string :as string]

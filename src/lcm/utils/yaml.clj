@@ -1,3 +1,6 @@
+;; Copyright DataStax, Inc.
+;; Please see the included license file for details.
+
 (ns lcm.utils.yaml
   (:require [clojure.walk :as walk])
   (:import [org.yaml.snakeyaml Yaml DumperOptions DumperOptions$FlowStyle]))

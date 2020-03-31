@@ -1,3 +1,6 @@
+;; Copyright DataStax, Inc.
+;; Please see the included license file for details.
+
 (ns com.datastax.configbuilder.render.helpers-test
   (:require [com.datastax.configbuilder.render.helpers :as helpers]
             [slingshot.test :refer :all]

@@ -1,3 +1,6 @@
+;; Copyright DataStax, Inc.
+;; Please see the included license file for details.
+
 (ns com.datastax.configbuilder.operator
   (:require [com.datastax.configbuilder.build-config :as bc]
             [com.datastax.configbuilder.definitions :as d]

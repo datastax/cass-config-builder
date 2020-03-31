@@ -1,3 +1,6 @@
+;; Copyright DataStax, Inc.
+;; Please see the included license file for details.
+
 (ns com.datastax.configbuilder.render-test
   (:require [com.datastax.configbuilder.render :as r]
             [com.datastax.configbuilder.test-data :as test-data]

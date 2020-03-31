@@ -1,3 +1,6 @@
+;; Copyright DataStax, Inc.
+;; Please see the included license file for details.
+
 (ns lcm.utils.oss-definitions-gen
   (:require [com.datastax.configbuilder.definitions :as d]
             [clojure.set :as set]

@@ -1,3 +1,6 @@
+;; Copyright DataStax, Inc.
+;; Please see the included license file for details.
+
 (ns com.datastax.configbuilder.build-config-test
   (:require [clojure.test :refer :all]
             [com.datastax.configbuilder.test-data :as test-data]

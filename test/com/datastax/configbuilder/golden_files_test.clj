@@ -1,3 +1,6 @@
+;; Copyright DataStax, Inc.
+;; Please see the included license file for details.
+
 (ns com.datastax.configbuilder.golden-files-test
   (:require  [clojure.test :refer :all]
              [clojure.java.io :as io]
