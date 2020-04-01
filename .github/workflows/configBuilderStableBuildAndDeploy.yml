@@ -9,6 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+      with:
+        submodules: true
     - name: Set up JDK 1.8
       uses: actions/setup-java@v1
       with:
@@ -16,6 +18,7 @@ jobs:
     - name: Build with Gradle
       run: ./gradlew assemble   
     - name: Deploy jar to artifactory
+      if: github.repository == "datastax/cass-config-builder"
       env:
         mavenRepositoryUrlTest: "urltest"
         mavenRepositoryUrl: "url"
