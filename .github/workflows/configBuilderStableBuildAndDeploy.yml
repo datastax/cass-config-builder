@@ -7,7 +7,6 @@ jobs:
   build_cass_config_builder_jar:
     name: Build Cass Config Builder Jar
     runs-on: ubuntu-latest
-    env:
     steps:
     - uses: actions/checkout@v2
     - name: Set up JDK 1.8
