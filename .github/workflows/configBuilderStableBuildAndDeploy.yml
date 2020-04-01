@@ -18,7 +18,6 @@ jobs:
     - name: Build with Gradle
       run: ./gradlew assemble   
     - name: Deploy jar to artifactory
-      if: github.repository == "datastax/cass-config-builder"
       env:
         mavenRepositoryUrlTest: "urltest"
         mavenRepositoryUrl: "url"
