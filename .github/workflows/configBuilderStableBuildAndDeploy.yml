@@ -17,7 +17,7 @@ jobs:
       run: ./gradlew assemble   
     - name: Deploy jar to artifactory
       env:
-        ORG_GRADLE_PROJECT_mavenRepositoryUrl: ${{ secrets.MAVEN_REPO_URL }}
-        ORG_GRADLE_PROJECT_mavenRepositoryUsername: ${{ secrets.MAVEN_REPO_USER }}
-        ORG_GRADLE_PROJECT_mavenRepositoryPassword: ${{ secrets.MAVEN_REPO_PASS }}
+        mavenRepositoryUrl: ${{ secrets.MAVEN_REPO_URL }}
+        mavenRepositoryUsername: ${{ secrets.MAVEN_REPO_USER }}
+        mavenRepositoryPassword: ${{ secrets.MAVEN_REPO_PASS }}
       run: ./gradlew publish

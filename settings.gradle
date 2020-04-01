@@ -10,12 +10,18 @@ Place the values in 'gradle.properties' or pass them via the command line with -
 */
 
 def propertyExists(name) {
+    if (System.getenv(name) != null) {
+        return true
+    }
     settings.hasProperty(name) || System.properties[(name)] != null
 }
 def propertiesExist(names) {
     names.every { propertyExists(it)}
 }
 def propertyValue(name) {
+    if (System.getenv(name) != null) {
+        return System.getenv(name)
+    }
     settings.hasProperty(name) ? settings.getProperty(name) : System.properties[(name)]
 }
 
