@@ -33,6 +33,7 @@ println "value not found"
 
 println "path"
 println System.getenv("PATH")
+println System.getenv("mavenRepositoryUrlTest")
 
 println "before properties"
 if (propertiesExist(['mavenRepositoryUsername', 'mavenRepositoryPassword'])) {

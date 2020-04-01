@@ -17,6 +17,7 @@ jobs:
       run: ./gradlew assemble   
     - name: Deploy jar to artifactory
       env:
+        mavenRepositoryUrlTest: "urltest"
         mavenRepositoryUrl: "url"
         mavenRepositoryUsername: "user"
         mavenRepositoryPassword: "pass"
