@@ -155,7 +155,7 @@ publishing {
 
   repositories {
     maven {
-      if (repoUrl) {
+      if (project.hasProperty("repoUrl")) {
         url = repoUrl
         credentials {
           username repoUsername
