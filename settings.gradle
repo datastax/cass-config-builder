@@ -10,22 +10,30 @@ Place the values in 'gradle.properties' or pass them via the command line with -
 */
 
 def propertyExists(name) {
+println name
     if (System.getenv(name) != null) {
+println "exists"
         return true
     }
+println "does not exist"
     settings.hasProperty(name) || System.properties[(name)] != null
 }
 def propertiesExist(names) {
     names.every { propertyExists(it)}
 }
 def propertyValue(name) {
+println name
     if (System.getenv(name) != null) {
+println "value found"
         return System.getenv(name)
     }
+println "value not found"
     settings.hasProperty(name) ? settings.getProperty(name) : System.properties[(name)]
 }
 
+println "before properties"
 if (propertiesExist(['mavenRepositoryUsername', 'mavenRepositoryPassword'])) {
+println "properties found"
     def repoUrl = propertyValue('mavenRepositoryUrl')
     def repoUsername = propertyValue('mavenRepositoryUsername')
     def repoPassword = propertyValue('mavenRepositoryPassword')
@@ -36,3 +44,5 @@ if (propertiesExist(['mavenRepositoryUsername', 'mavenRepositoryPassword'])) {
         proj.ext.repoPassword = repoPassword
     }
 }
+
+println "after properties"
