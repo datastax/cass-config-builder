@@ -31,6 +31,9 @@ println "value not found"
     settings.hasProperty(name) ? settings.getProperty(name) : System.properties[(name)]
 }
 
+println "path"
+println System.getenv("PATH")
+
 println "before properties"
 if (propertiesExist(['mavenRepositoryUsername', 'mavenRepositoryPassword'])) {
 println "properties found"
