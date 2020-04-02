@@ -191,5 +191,4 @@ task pushDockerImage(type: DockerPushImage, group: 'Docker', description: "Push 
 }
 
 assemble.dependsOn dockerImage
-
 check.dependsOn assemble
