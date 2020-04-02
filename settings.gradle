@@ -22,18 +22,11 @@ def propertiesExist(names) {
     names.every { propertyExists(it)}
 }
 def propertyValue(name) {
-println name
     if (System.getenv(name) != null) {
-println "value found"
         return System.getenv(name)
     }
-println "value not found"
     settings.hasProperty(name) ? settings.getProperty(name) : System.properties[(name)]
 }
-
-println "path"
-println System.getenv("PATH")
-println System.getenv("mavenRepositoryUrlTest")
 
 println "before properties"
 if (propertiesExist(['mavenRepositoryUsername', 'mavenRepositoryPassword'])) {
