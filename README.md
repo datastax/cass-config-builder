@@ -100,8 +100,14 @@ agent_version:The version of Datastax Agent to support
 
 The POD_IP will be used as the default value for the listen_address and native_transport_broadcast_address if they are not specified.
 
+Cassandra refers to native_transport address as rpc_address and native_transport_broadcast_address as broadcast_rpc_address.
+
 native_transport_address will be defaulted to "0.0.0.0".
 
 ## Additional Top-Level CONFIG_FILE_DATA keys
 
 The list of supported additional fields is dependent upon the exact version of DSE or Cassandra that is being targetted.  Each key is called a "config-file-id" and corresponds to a specific configuration file in that version of DSE or Cassandra.  The exact details of the config-file-ids and their supported values are defined in the cass-config-builder Definition Files.
+
+For more details on the Definition Files, see the Github repository:
+
+https://github.com/datastax/cass-config-definitions
