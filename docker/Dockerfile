@@ -1,7 +1,6 @@
 # Copyright DataStax, Inc.
 # Please see the included license file for details.
 
-# FROM openjdk:8u212-jre-slim-stretch
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 
 RUN microdnf update && rm -rf /var/cache/yum
