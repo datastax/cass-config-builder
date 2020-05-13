@@ -2,6 +2,17 @@
 
 The cass-config-builder can be consumed as either a jar artifact or inside of a Docker image.
 
+# Testing
+
+./gradlew test
+
+This task, without additional parameters, will test the cass-config-definitions submodule. 
+However, this can be inconvenient if you want to make changes in your own fork of the 
+cass-config-definitions repo. The following -P option allows you to point to a different
+directory for the definition files to test with:
+
+./gradlew test -Pdefinitions.location=~/cass-config-definitions/resources
+
 # Build all artifacts
 
 ./gradlew assemble
