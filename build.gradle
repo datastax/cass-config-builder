@@ -125,6 +125,10 @@ dependencies {
     testImplementation "junit:junit:4.12"
 }
 
+test {
+     systemProperties project.properties.subMap(["definitions.location"])
+}
+
 jar {
     manifest {
         attributes 'Main-Class': 'com.datastax.configbuilder.CassOperatorConfigBuilder'
@@ -155,7 +159,7 @@ publishing {
 
   repositories {
     maven {
-      if (repoUrl) {
+      if (project.hasProperty('repoUrl')) {
         url = repoUrl
         credentials {
           username repoUsername

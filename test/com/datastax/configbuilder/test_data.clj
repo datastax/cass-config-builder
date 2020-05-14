@@ -3,7 +3,8 @@
 
 (ns com.datastax.configbuilder.test-data
   (:require [com.datastax.configbuilder.definitions :as d]
-            [com.datastax.configbuilder.test-helpers :as helper]))
+            [com.datastax.configbuilder.test-helpers :as helper]
+            [clojure.string :as s]))
 
 ;; Test namespaces should primarily make use of the
 ;; get-definitions-data function. This will store the requested
@@ -13,7 +14,12 @@
 ;; If it is necessary to evict the cache, the test should
 ;; call reset-definitions-data!.
 
-(def definitions-location "cass-config-definitions/resources")
+(def definitions-location
+  (s/replace-first
+   (System/getProperty
+    "definitions.location"
+    "cass-config-definitions/resources")
+   #"^~" (System/getProperty "user.home")))
 
 (defn- load-definitions-data
   [definitions-data product datastax-version]
