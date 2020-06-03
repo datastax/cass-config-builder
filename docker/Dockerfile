@@ -1,7 +1,7 @@
 # Copyright DataStax, Inc.
 # Please see the included license file for details.
 
-FROM openjdk:8u212-jre-slim-stretch
+FROM datastax/ds-base-debian-openjdk-8:8u252-jdk-slim-buster-20200602
 
 ENV USER_UID=1001 \
     USER_NAME=cass-operator \
