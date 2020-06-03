@@ -108,7 +108,8 @@
                              :node-info    node-info
                              :datacenter-info datacenter-info
                              :dse-env-sh {:dse-log-root "/foo/log"
-                                          :cassandra-log-dir "/foo/log/cassandra"}})]
+                                          :cassandra-log-dir "/foo/log/cassandra"
+                                          :custom-env-vars {"DSE_SOLR_MODE" "1", "SOLR_ENABLED" "1"}}})]
       (testing "- cassandra.yaml"
         (testing "default values"
           (is (= 128 (get-in built-configs [:cassandra-yaml :io_global_queue_depth]))))
@@ -141,6 +142,7 @@
         (is (= {:dc "dc-1" :rack "rack-1"}
                (:cassandra-rackdc-properties built-configs))))
       (testing "- dse-env.sh"
+        (is (= "1" (get-in built-configs [:dse-env-sh :custom-env-vars "SOLR_ENABLED"])))
         (is (= "/foo/log/cassandra" (get-in built-configs [:dse-env-sh :cassandra-log-dir]))))
 
       (testing "Dependent fields should not be present unless their condition is satisfied"
@@ -365,3 +367,4 @@
                                        {:run-context
                                         {:install-options
                                          {:install-directory "/d/e/f"}}}}})))))
+

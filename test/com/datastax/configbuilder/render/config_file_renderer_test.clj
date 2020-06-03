@@ -11,6 +11,9 @@
             [slingshot.test :refer :all]
             [clojure.test :refer :all]))
 
+(deftest test-key-val-filters
+  (is (= (render "{{foo|key|name}}={{foo|val}}" {:foo (first {:bar "blah"})})  "bar=blah")))
+
 (deftest test-sanitize-bash-env-var-value
   (is (= (render "{{foo|sanitize-bash-env-var-value}}" {:foo "test"}) "test"))
   (is (= (render "{{foo|sanitize-bash-env-var-value}}" {:foo "test#"}) "test"))
@@ -336,3 +339,13 @@ rm-key1 rm-value1
          :definitions-location definitions-location}
         :jvm-options
         {}))))
+
+(deftest test-render-dse-env-sh-custom-env-vars
+  (let [result (renderer/render-config-file
+                {:datastax-version helper/default-dse-version
+                 :definitions (d/get-all-definitions-for-version definitions-location helper/default-dse-version)
+                 :definitions-location definitions-location}
+                :dse-env-sh
+                {:dse-env-sh {:custom-env-vars {:FOO "1", "BAR" "BLAH"}}})]
+    (is (.contains result "FOO=\"1\""))
+    (is (.contains result "BAR=\"BLAH\""))))
