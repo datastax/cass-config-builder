@@ -33,7 +33,7 @@ def getDate() {
 
 description = "Cassandra/DSE Configuration Builder Library"
 group = 'datastax'
-version = '1.0.0-' + getDate()
+version = '1.0.1-' + getDate()
 
 repositories {
   mavenCentral()
