@@ -11,6 +11,8 @@
 
 (defn make-configs
   [{:keys [pod-ip
+           host-ip
+           use-host-ip-for-broadcast
            config-file-data
            product-version
            rack-name
@@ -26,7 +28,9 @@
                                            pod-ip)
         config-file-data-ips-2   (assoc-in config-file-data-ips-1
                                            [:node-info :native_transport_broadcast_address]
-                                           pod-ip)
+                                           (if (= "true" use-host-ip-for-broadcast)
+                                             host-ip
+                                             pod-ip))
         config-file-data-ips-3   (assoc-in config-file-data-ips-2
                                            [:node-info :native_transport_address]
                                            "0.0.0.0")
@@ -57,15 +61,17 @@
   [& args]
   (try
     (make-configs
-     {:pod-ip                   (System/getenv "POD_IP")
-      :config-file-data         (System/getenv "CONFIG_FILE_DATA")
-      :product-version          (System/getenv "PRODUCT_VERSION")
-      :rack-name                (System/getenv "RACK_NAME")
-      :product-name             (or (System/getenv "PRODUCT_NAME") "dse")
-      :config-output-directory  (or (System/getenv "CONFIG_OUTPUT_DIRECTORY")
+     {:pod-ip                    (System/getenv "POD_IP")
+      :config-file-data          (System/getenv "CONFIG_FILE_DATA")
+      :product-version           (System/getenv "PRODUCT_VERSION")
+      :rack-name                 (System/getenv "RACK_NAME")
+      :product-name              (or (System/getenv "PRODUCT_NAME") "dse")
+      :use-host-ip-for-broadcast (or (System/getenv "USE_HOST_IP_FOR_BROADCAST") "false")
+      :host-ip                   (System/getenv "HOST_IP")
+      :config-output-directory   (or (System/getenv "CONFIG_OUTPUT_DIRECTORY")
                                    "/config")
       ;; This is defined by the build and under our control
-      :definitions-location     (or (System/getenv "DEFINITIONS_LOCATION")
+      :definitions-location      (or (System/getenv "DEFINITIONS_LOCATION")
                                    "/definitions")})
     (catch Exception e
       (do
