@@ -198,7 +198,7 @@ task dockerDebianImage(type: DockerBuildImage, group: 'Docker', description: 'Bu
 task dockerRedHatImage(type: DockerBuildImage, group: 'Docker', description: 'Build cass-config-builder based on Red Hat') {
     dependsOn copyDockerBuildCtx
     inputDir = copyDockerBuildCtx.destinationDir
-    dockerFile = new File(inputDir.get().asFile, "debian.Dockerfile")
+    dockerFile = new File(inputDir.get().asFile, "redhat.Dockerfile")
     labels.put("release", "${version}")
     images.add("${imagePrefix}/cass-config-builder:${version}-ubi")
 }
