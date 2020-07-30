@@ -1,16 +1,13 @@
 name: Cass Config Builder Build & Deploy
 on:
   push:
-    branches: [ master ]
+    branches: [ master, add-github-workflow ]
   pull_request:
     branches: [ master ]
 jobs:
   build_operator_docker:
     name: Build Cass Config Builder Docker Image
     runs-on: ubuntu-latest
-    env:
-      GOPATH: /home/runner/go
-      GOROOT: /usr/local/go1.13
     steps:
       - uses: actions/checkout@v2
         if: github.event_name != 'pull_request'
