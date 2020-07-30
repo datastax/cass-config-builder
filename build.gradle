@@ -33,7 +33,7 @@ def getDate() {
 
 description = "Cassandra/DSE Configuration Builder Library"
 group = 'datastax'
-version = '1.0.1-' + getDate()
+version = '1.0.2-' + getDate()
 
 repositories {
   mavenCentral()
@@ -77,7 +77,12 @@ sourceSets {
 
 // Docker publishing
 
-ext.set('imagePrefix', (project.hasProperty('dockerRegistry') ? ( "$dockerRegistry/" - 'http://' - 'https://') : "") + 'datastax')
+
+if (project.hasProperty('dockerRegistry')) {
+    ext.set('imagePrefix', ("$dockerRegistry/" - 'http://' - 'https://') + 'datastax' + '/cass-config-builder')
+} else {
+    ext.set('imagePrefix', 'datastax' + '/cass-config-builder')
+}
 
 docker {
     registryCredentials {
@@ -140,7 +145,6 @@ publishing {
     mavenJava(MavenPublication) {
       groupId = 'com.datastax'
       artifactId = 'cass-config-builder'
-      version = "1.0.0-" + getDate()
 
       from components.java
 
