@@ -77,13 +77,12 @@ sourceSets {
 
 // Docker publishing
 
-dockerImagePrefix = ""
 
 if (project.hasProperty('dockerRegistry')) {
-    dockerImagePrefix = "$dockerRegistry/" - 'http://' - 'https://'
+    ext.set('imagePrefix', ("$dockerRegistry/" - 'http://' - 'https://') + 'datastax' + '/cass-config-builder')
+} else {
+    ext.set('imagePrefix', 'datastax' + '/cass-config-builder')
 }
-
-ext.set('imagePrefix', dockerImagePrefix + 'datastax' + '/cass-config-builder')
 
 docker {
     registryCredentials {
