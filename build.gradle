@@ -77,7 +77,13 @@ sourceSets {
 
 // Docker publishing
 
-ext.set('imagePrefix', (project.hasProperty('dockerRegistry') ? ( "$dockerRegistry/" - 'http://' - 'https://') : "") + 'datastax' + '/cass-config-builder')
+dockerImagePrefix = ""
+
+if (project.hasProperty('dockerRegistry')) {
+    dockerImagePrefix = "$dockerRegistry/" - 'http://' - 'https://'
+}
+
+ext.set('imagePrefix', dockerImagePrefix + 'datastax' + '/cass-config-builder')
 
 docker {
     registryCredentials {
@@ -140,7 +146,6 @@ publishing {
     mavenJava(MavenPublication) {
       groupId = 'com.datastax'
       artifactId = 'cass-config-builder'
-      version = "1.0.2-" + getDate()
 
       from components.java
 
