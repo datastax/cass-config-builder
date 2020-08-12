@@ -198,5 +198,14 @@ task pushDockerImage(type: DockerPushImage, group: 'Docker', description: "Push 
     images = dockerImage.images.getOrNull().asList()
 }
 
+clojureRepl {
+    port = 7888
+    // add extracted server functions to the classpath
+    classpath += sourceSets.main.runtimeClasspath
+    forkOptions {
+        jvmArgs << "-D${project.name}.version=$version"
+    }
+}
+
 assemble.dependsOn dockerImage
 check.dependsOn assemble
