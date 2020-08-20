@@ -200,7 +200,7 @@ task dockerRedHatImage(type: DockerBuildImage, group: 'Docker', description: 'Bu
     inputDir = copyDockerBuildCtx.destinationDir
     dockerFile = new File(inputDir.get().asFile, "redhat.Dockerfile")
     labels.put("release", "${version}")
-    images.add("${imagePrefix}/cass-config-builder:${version}-ubi")
+    images.add("${imagePrefix}/cass-config-builder:${version}-ubi7")
 }
 
 task dockerImages(group: 'Docker', description: 'Build cass-config-builder docker images') {
@@ -209,8 +209,10 @@ task dockerImages(group: 'Docker', description: 'Build cass-config-builder docke
 }
 
 task pushDockerImages(type: DockerPushImage, group: 'Docker', description: "Push Docker image to registry specified with 'dockerRegistry' property") {
-    images.add(dockerDebianImage.images.getOrNull().asList())
-    images.add(dockerRedHatImage.images.getOrNull().asList())
+    dependsOn dockerDebianImage, dockerRedHatImage
+
+    images.addAll(dockerDebianImage.images.getOrNull().asList())
+    images.addAll(dockerRedHatImage.images.getOrNull().asList())
 }
 
 clojureRepl {
