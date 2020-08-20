@@ -17,8 +17,10 @@ LABEL summary="Configuration templating engine for Apache Cassandra®."
 LABEL description="Configuration templating engine for Apache Cassandra®. Powers the configuration of containers deployed via the DataStax Kubernetes Operator for Apache Cassandra."
 
 # Update base packages
-RUN microdnf update && rm -rf /var/cache/yum && \
-    microdnf install java-1.8.0-openjdk-headless && microdnf clean all
+RUN microdnf update && \
+    rm -rf /var/cache/yum && \
+    microdnf install java-1.8.0-openjdk-headless && \
+    microdnf clean all
 
 # Copy user accounts information
 COPY --from=builder /etc/passwd /etc/passwd
