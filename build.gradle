@@ -187,15 +187,32 @@ task copyDockerBuildCtx(type: Sync) {
     from shadowJar
 }
 
-task dockerImage(type: DockerBuildImage, group: 'Docker', description: 'Build cass-config-builder docker image') {
+task dockerDebianImage(type: DockerBuildImage, group: 'Docker', description: 'Build cass-config-builder based on Debian') {
     dependsOn copyDockerBuildCtx
     inputDir = copyDockerBuildCtx.destinationDir
+    dockerFile = new File(inputDir.get().asFile, "debian.Dockerfile")
+    labels.put("release", "${version}")
     images.add("${imagePrefix}/cass-config-builder:${version}")
 }
 
-task pushDockerImage(type: DockerPushImage, group: 'Docker', description: "Push Docker image to registry specified with 'dockerRegistry' property") {
-    dependsOn dockerImage
-    images = dockerImage.images.getOrNull().asList()
+task dockerRedHatImage(type: DockerBuildImage, group: 'Docker', description: 'Build cass-config-builder based on Red Hat') {
+    dependsOn copyDockerBuildCtx
+    inputDir = copyDockerBuildCtx.destinationDir
+    dockerFile = new File(inputDir.get().asFile, "redhat.Dockerfile")
+    labels.put("release", "${version}")
+    images.add("${imagePrefix}/cass-config-builder:${version}-ubi7")
+}
+
+task dockerImages(group: 'Docker', description: 'Build cass-config-builder docker images') {
+    dependsOn dockerDebianImage
+    dependsOn dockerRedHatImage
+}
+
+task pushDockerImages(type: DockerPushImage, group: 'Docker', description: "Push Docker image to registry specified with 'dockerRegistry' property") {
+    dependsOn dockerDebianImage, dockerRedHatImage
+
+    images.addAll(dockerDebianImage.images.getOrNull().asList())
+    images.addAll(dockerRedHatImage.images.getOrNull().asList())
 }
 
 clojureRepl {
@@ -207,5 +224,5 @@ clojureRepl {
     }
 }
 
-assemble.dependsOn dockerImage
+assemble.dependsOn dockerImages
 check.dependsOn assemble
