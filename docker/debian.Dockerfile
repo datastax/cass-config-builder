@@ -1,6 +1,6 @@
 # Copyright DataStax, Inc.
 # Please see the included license file for details.
-FROM --platform=linux/amd64 maven:3.6.3-adoptopenjdk-8 as builder
+FROM --platform=${BUILDPLATFORM} maven:3.6.3-adoptopenjdk-8 as builder
 
 COPY . .
 
