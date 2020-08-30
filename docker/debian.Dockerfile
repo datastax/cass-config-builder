@@ -72,9 +72,7 @@ COPY --from=builder build/docker/definitions /definitions
 
 COPY --from=builder build/docker/bin/* /usr/local/bin/
 
-COPY bin/* /usr/local/bin/
-
-COPY LICENSE /licenses/
+COPY --from=builder build/docker/LICENSE /licenses/
 
 # Fix permissions
 RUN chown cassandra:root -Rv /usr/local/bin/* && \
