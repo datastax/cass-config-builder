@@ -41,6 +41,22 @@ jobs:
           VERSION_DATE="$(date -u +%Y%m%d)"
           RELEASE_VERSION="${VERSION_NUMBER}-${VERSION_DATE}"
 
+          TAG_UBI="${RELEASE_VERSION}-ubi7"
+          docker buildx build --load \
+            --cache-from "type=local,src=/tmp/.buildx-cache" \
+            --cache-to "type=local,dest=/tmp/.buildx-cache" \
+            --tag "${REPOSITORY_URL}:${TAG_UBI}" \
+            --label "release=$RELEASE_VERSION" \
+            --label "org.label-schema.schema-version=1.0" \
+            --label "org.label-schema.vcs-ref=$GITHUB_SHA" \
+            --label "org.label-schema.vcs-url=$GITHUB_REPO_URL" \
+            --label "org.label-schema.version=$RELEASE_VERSION" \
+            --file docker/debian.Dockerfile \
+            --target cass-config-builder-ubi \
+            --platform linux/amd64 .
+
+          docker push "${REPOSITORY_URL}:${TAG_UBI}"
+
           # GitHub packages does not presently support multiarch images, so we
           # will have to create independent tags for each arch. This feature is
           # coming though:
@@ -53,6 +69,7 @@ jobs:
             --cache-from "type=local,src=/tmp/.buildx-cache" \
             --cache-to "type=local,dest=/tmp/.buildx-cache" \
             --tag "${REPOSITORY_URL}:${TAG_ARM64}" \
+            --label "release=$RELEASE_VERSION" \
             --label "org.label-schema.schema-version=1.0" \
             --label "org.label-schema.vcs-ref=$GITHUB_SHA" \
             --label "org.label-schema.vcs-url=$GITHUB_REPO_URL" \
@@ -63,11 +80,12 @@ jobs:
 
           docker push "${REPOSITORY_URL}:${TAG_ARM64}"
 
-          TAG_AMD64="$RELEASE_VERSION"
+          TAG_AMD64="${RELEASE_VERSION}"
           docker buildx build --load \
             --cache-from "type=local,src=/tmp/.buildx-cache" \
             --cache-to "type=local,dest=/tmp/.buildx-cache" \
             --tag "${REPOSITORY_URL}:${TAG_AMD64}" \
+            --label "release=$RELEASE_VERSION" \
             --label "org.label-schema.schema-version=1.0" \
             --label "org.label-schema.vcs-ref=$GITHUB_SHA" \
             --label "org.label-schema.vcs-url=$GITHUB_REPO_URL" \
