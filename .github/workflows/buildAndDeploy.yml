@@ -18,13 +18,13 @@ jobs:
         if: github.event_name != 'pull_request'
         with:
           submodules: true
+      - name: Login to GitHub Package Registry
+        run: echo "${{ secrets.JOHN_GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u "${{ github.actor }}" --password-stdin
       - name: Setup Buildx
         id: buildx
         uses: crazy-max/ghaction-docker-buildx@v3
         with:
           version: latest
-      - name: Login to GitHub Package Registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u "${{ github.actor }}" --password-stdin
       - name: Build docker image
         run: |
           echo "Repo owner: ${{ github.repository_owner	}}"
@@ -36,7 +36,7 @@ jobs:
           RELEASE_VERSION="${VERSION_NUMBER}-${VERSION_DATE}"
           echo "Release: $RELEASE_VERSION"
           docker buildx build --push \
-            --tag docker.pkg.github.com/${{ github.repository_owner }}/cass-config-builder/cass-config-builder:$RELEASE_VERSION \
+            --tag docker.pkg.github.com/johntrimble/cass-config-builder/cass-config-builder:$RELEASE_VERSION \
             --label "release=${RELEASE_VERSION}" \
             --file docker/debian.Dockerfile \
             --target cass-config-builder \
