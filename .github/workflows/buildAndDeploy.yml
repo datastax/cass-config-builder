@@ -42,7 +42,12 @@ jobs:
           RELEASE_VERSION="${VERSION_NUMBER}-${VERSION_DATE}"
 
           # GitHub packages does not presently support multiarch images, so we
-          # will have to create independent tags for each arch
+          # will have to create independent tags for each arch. This feature is
+          # coming though:
+          #
+          #    https://github.community/t/handle-multi-arch-docker-images-on-github-package-registry/14314/16
+          #
+
           TAG_ARM64="${RELEASE_VERSION}-arm64"
           docker buildx build --load \
             --cache-from "type=local,src=/tmp/.buildx-cache" \
