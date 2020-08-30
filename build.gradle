@@ -27,13 +27,14 @@ import java.text.SimpleDateFormat
 
 def getDate() {
     DateFormat df = new SimpleDateFormat("yyyyMMdd");
+    df.timeZone = TimeZone.getTimeZone('UTC')
 
     return df.format(new Date());
 }
 
 description = "Cassandra/DSE Configuration Builder Library"
 group = 'datastax'
-version = '1.0.3-' + getDate()
+version = "${new File('version.txt').text.trim()}-${getDate()}"
 
 repositories {
   mavenCentral()
