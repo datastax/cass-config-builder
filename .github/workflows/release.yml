@@ -47,6 +47,7 @@ jobs:
           --cache-from "type=local,src=/tmp/.buildx-cache" \
           --cache-to "type=local,dest=/tmp/.buildx-cache" \
           --tag "${REPOSITORY_URL}:${RELEASE_VERSION}" \
+          --label "release=$RELEASE_VERSION" \
           --label "org.label-schema.schema-version=1.0" \
           --label "org.label-schema.vcs-ref=$GITHUB_SHA" \
           --label "org.label-schema.vcs-url=$GITHUB_REPO_URL" \
@@ -54,3 +55,16 @@ jobs:
           --file docker/debian.Dockerfile \
           --target cass-config-builder \
           --platform linux/amd64,linux/arm64 .
+
+        docker buildx build --push \
+          --cache-from "type=local,src=/tmp/.buildx-cache" \
+          --cache-to "type=local,dest=/tmp/.buildx-cache" \
+          --tag "${REPOSITORY_URL}:${RELEASE_VERSION}-ubi7" \
+          --label "release=$RELEASE_VERSION" \
+          --label "org.label-schema.schema-version=1.0" \
+          --label "org.label-schema.vcs-ref=$GITHUB_SHA" \
+          --label "org.label-schema.vcs-url=$GITHUB_REPO_URL" \
+          --label "org.label-schema.version=$RELEASE_VERSION" \
+          --file docker/debian.Dockerfile \
+          --target cass-config-builder-ubi \
+          --platform linux/amd64 .
