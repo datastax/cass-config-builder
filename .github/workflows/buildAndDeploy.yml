@@ -35,9 +35,9 @@ jobs:
           echo "Date: $VERSION_DATE"
           RELEASE_VERSION="${VERSION_NUMBER}-${VERSION_DATE}"
           echo "Release: $RELEASE_VERSION"
-          # docker buildx build --push \
-          #   --tag docker.pkg.github.com/johntrimble/cass-config-builder/cass-config-builder:$RELEASE_VERSION \
-          #   --label "release=${RELEASE_VERSION}" \
-          #   --file docker/debian.Dockerfile \
-          #   --target cass-config-builder \
-          #   --platform linux/amd64,linux/arm64 .
+          docker buildx build --push \
+            --tag docker.pkg.github.com/${{ github.repository_owner }}/cass-config-builder/cass-config-builder:$RELEASE_VERSION \
+            --label "release=${RELEASE_VERSION}" \
+            --file docker/debian.Dockerfile \
+            --target cass-config-builder \
+            --platform linux/amd64,linux/arm64 .
