@@ -16,7 +16,7 @@ FROM base-${TARGETARCH} as cass-config-builder
 
 ENV USER_UID=1001 \
     USER_NAME=cass-operator \
-    HOME=/home/$USER_NAME
+    HOME=/home/cass-operator
 
 # Install the uber jar
 COPY --from=builder build/docker/*.jar /usr/local/bin/
