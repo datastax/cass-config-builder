@@ -39,7 +39,6 @@ jobs:
           TAG_AMD64="$RELEASE_VERSION"
           docker buildx build --load \
             --tag "${REPOSITORY_URL}:${TAG_AMD64}" \
-            --label "release=${RELEASE_VERSION}" \
             --label "org.label-schema.schema-version=1.0" \
             --label "org.label-schema.vcs-ref=$GITHUB_SHA" \
             --label "org.label-schema.vcs-url=$GITHUB_REPO_URL" \
@@ -53,7 +52,6 @@ jobs:
           TAG_ARM64="${RELEASE_VERSION}-arm64"
           docker buildx build --load \
             --tag "${REPOSITORY_URL}:${TAG_ARM64}" \
-            --label "release=${RELEASE_VERSION}" \
             --label "org.label-schema.schema-version=1.0" \
             --label "org.label-schema.vcs-ref=$GITHUB_SHA" \
             --label "org.label-schema.vcs-url=$GITHUB_REPO_URL" \
