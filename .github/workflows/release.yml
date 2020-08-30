@@ -1,0 +1,41 @@
+name: Docker Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release_config_builder:
+    name: Release Cass Config Builder
+    runs-on: ubuntu-latest
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Login to DockerHub
+      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+    - name: Publish to Dockerhub
+      run: |
+        GITHUB_REPO_URL="https://github.com/${{ github.repository }}"
+        REPOSITORY_URL="johntrimble/cass-config-builder-multiarch"
+        # REPOSITORY_URL="datastax/cass-config-builder"
+        VERSION_NUMBER="$(cat version.txt | tr -d '[:space:]')"
+
+        # Make sure the version number of the project aligns with
+        # the tag that we have to prevent confusion.
+        GIT_TAG="${GITHUB_REF##*/}"
+        if ! [ "v${VERSION_NUMBER}" = "${GIT_TAG}" ]; then
+          echo "Git tag $GIT_TAG does not align with version number ${VERSION_NUMBER} in version.txt"
+          exit 1
+        fi
+
+        RELEASE_VERSION="${VERSION_NUMBER}"
+        docker buildx build --push \
+          --tag "${REPOSITORY_URL}:${RELEASE_VERSION}" \
+          --label "org.label-schema.schema-version=1.0" \
+          --label "org.label-schema.vcs-ref=$GITHUB_SHA" \
+          --label "org.label-schema.vcs-url=$GITHUB_REPO_URL" \
+          --label "org.label-schema.version=$RELEASE_VERSION" \
+          --file docker/debian.Dockerfile \
+          --target cass-config-builder \
+          --platform linux/amd64,linux/arm64 .
