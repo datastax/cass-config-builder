@@ -35,30 +35,14 @@ jobs:
             ${{ runner.os }}-buildx-
       - name: Build docker image
         run: |
-          echo "Repository owner: ${{ github.repository_owner	}}"
           GITHUB_REPO_URL="https://github.com/${{ github.repository }}"
-          REPOSITORY_URL="docker.pkg.github.com/johntrimble/cass-config-builder/cass-config-builder"
+          REPOSITORY_URL="docker.pkg.github.com/${{ github.repository_owner }}/cass-config-builder/cass-config-builder"
           VERSION_NUMBER="$(cat version.txt | tr -d '[:space:]')"
           VERSION_DATE="$(date -u +%Y%m%d)"
           RELEASE_VERSION="${VERSION_NUMBER}-${VERSION_DATE}"
 
           # GitHub packages does not presently support multiarch images, so we
           # will have to create independent tags for each arch
-          TAG_AMD64="$RELEASE_VERSION"
-          docker buildx build --load \
-            --cache-from "type=local,src=/tmp/.buildx-cache" \
-            --cache-to "type=local,dest=/tmp/.buildx-cache" \
-            --tag "${REPOSITORY_URL}:${TAG_AMD64}" \
-            --label "org.label-schema.schema-version=1.0" \
-            --label "org.label-schema.vcs-ref=$GITHUB_SHA" \
-            --label "org.label-schema.vcs-url=$GITHUB_REPO_URL" \
-            --label "org.label-schema.version=$RELEASE_VERSION" \
-            --file docker/debian.Dockerfile \
-            --target cass-config-builder \
-            --platform linux/amd64 .
-
-          docker push "${REPOSITORY_URL}:${TAG_AMD64}"
-
           TAG_ARM64="${RELEASE_VERSION}-arm64"
           docker buildx build --load \
             --cache-from "type=local,src=/tmp/.buildx-cache" \
@@ -73,3 +57,18 @@ jobs:
             --platform linux/arm64 .
 
           docker push "${REPOSITORY_URL}:${TAG_ARM64}"
+
+          TAG_AMD64="$RELEASE_VERSION"
+          docker buildx build --load \
+            --cache-from "type=local,src=/tmp/.buildx-cache" \
+            --cache-to "type=local,dest=/tmp/.buildx-cache" \
+            --tag "${REPOSITORY_URL}:${TAG_AMD64}" \
+            --label "org.label-schema.schema-version=1.0" \
+            --label "org.label-schema.vcs-ref=$GITHUB_SHA" \
+            --label "org.label-schema.vcs-url=$GITHUB_REPO_URL" \
+            --label "org.label-schema.version=$RELEASE_VERSION" \
+            --file docker/debian.Dockerfile \
+            --target cass-config-builder \
+            --platform linux/amd64 .
+
+          docker push "${REPOSITORY_URL}:${TAG_AMD64}"
