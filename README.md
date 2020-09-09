@@ -36,19 +36,7 @@ mavenRepositoryPassword|  Password for publishing
 
 # Build the Docker image
 
-./gradlew dockerImage
-
-# Publish the Docker image to a remote docker repository
-
-./gradlew pushDockerImage
-
-This task uses the following gradle settings:
-
-Setting|Description
----|---
-dockerRegistry|          Docker registry to publish to
-dockerRegistryUsername|  Username for publishing
-dockerRegistryPassword|  Password for publishing
+Docker images are built automatically and pushed to GitHub packages for pushes to master and PRs against master. When creating a release tag (e.g. v1.2.0) an image is produced and pushed to DockerHub.
 
 # Using the cass-config-builder docker image
 

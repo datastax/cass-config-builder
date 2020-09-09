@@ -55,7 +55,7 @@ jobs:
 
           COMMON_ARGS=(
             "${LABELS[@]}"
-            --file docker/debian.Dockerfile
+            --file docker/Dockerfile
             --cache-from "type=local,src=/tmp/.buildx-cache"
             --cache-to "type=local,dest=/tmp/.buildx-cache"
           )

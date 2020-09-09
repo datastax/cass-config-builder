@@ -16,7 +16,6 @@
  * limitations under the License.
  */
 plugins {
-  id 'com.bmuschko.docker-remote-api' version '6.4.0'
   id 'dev.clojurephant.clojure' version '0.5.0'
   id 'com.github.johnrengelman.shadow' version '5.2.0'
   id 'maven-publish'
@@ -73,32 +72,6 @@ sourceSets {
     }
     dev {
         clojure.srcDirs = ['dev']
-    }
-}
-
-// Docker publishing
-
-
-if (project.hasProperty('dockerRegistry')) {
-    ext.set('imagePrefix', ("$dockerRegistry/" - 'http://' - 'https://') + 'datastax' + '/cass-config-builder')
-} else {
-    ext.set('imagePrefix', 'datastax' + '/cass-config-builder')
-}
-
-docker {
-    registryCredentials {
-        if (project.hasProperty('dockerRegistry')) {
-            url = project.dockerRegistry
-        }
-        if (project.hasProperty('dockerRegistryUsername'))
-        {
-            username = project.dockerRegistryUsername
-        }
-
-        if (project.hasProperty('dockerRegistryPassword'))
-        {
-            password = project.dockerRegistryPassword
-        }
     }
 }
 
@@ -177,8 +150,6 @@ publishing {
 
 assemble.dependsOn shadowJar
 
-import com.bmuschko.gradle.docker.tasks.image.*
-
 task copyDockerBuildCtx(type: Sync) {
     into "$buildDir/docker"
     from ("cass-config-definitions/resources") {
@@ -186,34 +157,6 @@ task copyDockerBuildCtx(type: Sync) {
     }
     from 'docker'
     from shadowJar
-}
-
-task dockerDebianImage(type: DockerBuildImage, group: 'Docker', description: 'Build cass-config-builder based on Debian') {
-    dependsOn copyDockerBuildCtx
-    inputDir = copyDockerBuildCtx.destinationDir
-    dockerFile = new File(inputDir.get().asFile, "debian.Dockerfile")
-    labels.put("release", "${version}")
-    images.add("${imagePrefix}/cass-config-builder:${version}")
-}
-
-task dockerRedHatImage(type: DockerBuildImage, group: 'Docker', description: 'Build cass-config-builder based on Red Hat') {
-    dependsOn copyDockerBuildCtx
-    inputDir = copyDockerBuildCtx.destinationDir
-    dockerFile = new File(inputDir.get().asFile, "redhat.Dockerfile")
-    labels.put("release", "${version}")
-    images.add("${imagePrefix}/cass-config-builder:${version}-ubi7")
-}
-
-task dockerImages(group: 'Docker', description: 'Build cass-config-builder docker images') {
-    dependsOn dockerDebianImage
-    dependsOn dockerRedHatImage
-}
-
-task pushDockerImages(type: DockerPushImage, group: 'Docker', description: "Push Docker image to registry specified with 'dockerRegistry' property") {
-    dependsOn dockerDebianImage, dockerRedHatImage
-
-    images.addAll(dockerDebianImage.images.getOrNull().asList())
-    images.addAll(dockerRedHatImage.images.getOrNull().asList())
 }
 
 clojureRepl {
@@ -225,5 +168,4 @@ clojureRepl {
     }
 }
 
-assemble.dependsOn dockerImages
 check.dependsOn assemble
