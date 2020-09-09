@@ -67,7 +67,7 @@ jobs:
 
           UBI_ARGS=(
             "${COMMON_ARGS[@]}"
-            --target cass-operator-ubi
+            --target cass-config-builder-ubi
           )
 
           # GitHub packages does not presently support multiarch images, so we
