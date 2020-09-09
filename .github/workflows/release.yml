@@ -29,9 +29,12 @@ jobs:
       - name: Publish to Dockerhub
         run: |
           GITHUB_REPO_URL="https://github.com/${{ github.repository }}"
-          REPOSITORY_URL="johntrimble/cass-config-builder-multiarch"
-          # REPOSITORY_URL="datastax/cass-config-builder"
+
           VERSION_NUMBER="$(cat version.txt | tr -d '[:space:]')"
+          RELEASE_VERSION="${VERSION_NUMBER}"
+
+          DOCKERHUB_REPOSITORY="johntrimble/cass-config-builder-multiarch"
+          # DOCKERHUB_REPOSITORY="datastax/cass-config-builder"
 
           # Make sure the version number of the project aligns with
           # the tag that we have to prevent confusion.
@@ -41,6 +44,9 @@ jobs:
             exit 1
           fi
 
+          DOCKERHUB_TAGS=(--tag "${DOCKERHUB_REPOSITORY}:${RELEASE_VERSION}")
+          DOCKERHUB_UBI_TAGS=(--tag "${DOCKERHUB_REPOSITORY}:${RELEASE_VERSION}-ubi7")
+
           LABELS=(
             --label "release=$RELEASE_VERSION"
             --label "org.label-schema.schema-version=1.0"
@@ -49,21 +55,29 @@ jobs:
             --label "org.label-schema.version=$RELEASE_VERSION"
           )
 
-          RELEASE_VERSION="${VERSION_NUMBER}"
-          docker buildx build --push \
-            --cache-from "type=local,src=/tmp/.buildx-cache" \
-            --cache-to "type=local,dest=/tmp/.buildx-cache" \
-            --tag "${REPOSITORY_URL}:${RELEASE_VERSION}" \
-            "${LABELS[@]}" \
-            --file docker/debian.Dockerfile \
-            --target cass-config-builder \
-            --platform linux/amd64,linux/arm64 .
+          COMMON_ARGS=(
+            "${LABELS[@]}"
+            --file docker/debian.Dockerfile
+            --cache-from "type=local,src=/tmp/.buildx-cache"
+            --cache-to "type=local,dest=/tmp/.buildx-cache"
+          )
+
+          STANDARD_ARGS=(
+            "${COMMON_ARGS[@]}"
+            --target cass-config-builder
+          )
+
+          UBI_ARGS=(
+            "${COMMON_ARGS[@]}"
+            --target cass-config-builder-ubi
+          )
 
           docker buildx build --push \
-            --cache-from "type=local,src=/tmp/.buildx-cache" \
-            --cache-to "type=local,dest=/tmp/.buildx-cache" \
-            --tag "${REPOSITORY_URL}:${RELEASE_VERSION}-ubi7" \
-            "${LABELS[@]}" \
-            --file docker/debian.Dockerfile \
-            --target cass-config-builder-ubi \
+            "${DOCKERHUB_UBI_TAGS[@]}" \
+            "${UBI_ARGS[@]}" \
             --platform linux/amd64 .
+
+          docker buildx build --push \
+            "${DOCKERHUB_TAGS[@]}" \
+            "${STANDARD_ARGS[@]}" \
+            --platform linux/amd64,linux/arm64 .

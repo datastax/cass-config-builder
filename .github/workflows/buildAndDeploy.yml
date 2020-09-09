@@ -104,4 +104,3 @@ jobs:
           for ((x=1; x<${#TAGS_TO_PUSH[@]}; x=x+2)); do
             docker push "${TAGS_TO_PUSH[x]}"
           done
-
