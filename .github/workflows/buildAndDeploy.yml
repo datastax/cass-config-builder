@@ -1,9 +1,9 @@
 name: Cass Config Builder Build & Deploy
 on:
   push:
-    branches: [ master, multiarch-pr ]
+    branches: [ master ]
   pull_request:
-    branches: [ master, multiarch-pr ]
+    branches: [ master ]
 jobs:
   build_operator_docker:
     name: Build Cass Config Builder Docker Image
@@ -19,7 +19,7 @@ jobs:
         with:
           submodules: true
       - name: Login to GitHub Package Registry
-        run: echo "${{ secrets.JOHN_GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u "${{ github.actor }}" --password-stdin
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u "${{ github.actor }}" --password-stdin
       - name: Setup Buildx
         id: buildx
         uses: crazy-max/ghaction-docker-buildx@v3

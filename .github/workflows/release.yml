@@ -33,8 +33,7 @@ jobs:
           VERSION_NUMBER="$(cat version.txt | tr -d '[:space:]')"
           RELEASE_VERSION="${VERSION_NUMBER}"
 
-          DOCKERHUB_REPOSITORY="johntrimble/cass-config-builder-multiarch"
-          # DOCKERHUB_REPOSITORY="datastax/cass-config-builder"
+          DOCKERHUB_REPOSITORY="datastax/cass-config-builder"
 
           # Make sure the version number of the project aligns with
           # the tag that we have to prevent confusion.
