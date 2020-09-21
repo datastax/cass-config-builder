@@ -22,7 +22,7 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 1.8
-      - name: Build docker image
+      - name: Run tests
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == 'datastax/cass-config-builder'
         env:
           ORG_GRADLE_PROJECT_dockerRegistry: docker.pkg.github.com
