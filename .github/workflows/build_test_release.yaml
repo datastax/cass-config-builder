@@ -1,0 +1,49 @@
+name: Docker Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release_config_builder:
+    name: Release Cass Config Builder
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Set up java 1.8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 1.8
+      - name: Publish Docker images to GitHub Packages
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == 'datastax/cass-config-builder'
+        env:
+          ORG_GRADLE_PROJECT_dockerRegistry: docker.pkg.github.com
+          ORG_GRADLE_PROJECT_dockerRegistryUsername: ${{ github.actor }}
+          ORG_GRADLE_PROJECT_dockerRegistryPassword: ${{ secrets.GITHUB_TOKEN }}
+        uses: eskatos/gradle-command-action@v1
+        with:
+          gradle-version: 6.0.1
+          arguments: pushDockerImages
+      - name: Publish Docker images to DockerHub
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == 'datastax/cass-config-builder'
+        env:
+          ORG_GRADLE_PROJECT_dockerRegistry: datastax
+          ORG_GRADLE_PROJECT_dockerRegistryUsername: ${{ secrets.DOCKER_USERNAME }}
+          ORG_GRADLE_PROJECT_dockerRegistryPassword: ${{ secrets.DOCKER_PASSWORD }}
+        uses: eskatos/gradle-command-action@v1
+        with:
+          gradle-version: 6.0.1
+          arguments: pushDockerImages
+      - name: Publish Docker images to Red Hat
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == 'datastax/cass-config-builder'
+        env:
+          ORG_GRADLE_PROJECT_dockerRegistry: ${{ secrets.REDHAT_REGISTRY }}
+          ORG_GRADLE_PROJECT_dockerRegistryUsername: unused
+          ORG_GRADLE_PROJECT_dockerRegistryPassword: ${{ secrets.REDHAT_REGISTRY_KEY }}
+        uses: eskatos/gradle-command-action@v1
+        with:
+          gradle-version: 6.0.1
+          arguments: pushRedHatImages

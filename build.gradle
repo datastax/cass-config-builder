@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 plugins {
-  id 'com.bmuschko.docker-remote-api' version '6.4.0'
+  id 'com.bmuschko.docker-remote-api' version '6.6.1'
   id 'dev.clojurephant.clojure' version '0.5.0'
   id 'com.github.johnrengelman.shadow' version '5.2.0'
   id 'maven-publish'
@@ -31,9 +31,8 @@ def getDate() {
     return df.format(new Date());
 }
 
-description = "Cassandra/DSE Configuration Builder Library"
+description = "Cassandra / DSE Configuration Builder Library"
 group = 'datastax'
-version = '1.0.3-' + getDate()
 
 repositories {
   mavenCentral()
@@ -84,19 +83,59 @@ if (project.hasProperty('dockerRegistry')) {
     ext.set('imagePrefix', 'datastax' + '/cass-config-builder')
 }
 
+ext {
+    defaultPropertyValue = { name, value, Closure converter = null ->
+        if (!ext.has(name)) ext.set(name, converter == null ? value : converter.call(value))
+        else if (converter) ext.set(name, converter.call(ext.get(name)))
+        ext.get(name)
+    }
+
+    loadDefaultPropertiesFromFile = {fileName ->
+        file("$fileName").withInputStream { 
+            def props = new Properties()
+            props.load(it)
+
+            for (key in props.keys()) {
+                defaultPropertyValue(key, props.getProperty(key))
+            }
+        }
+    }
+
+    defaultProjectPropertyValue = { proj, name, value, Closure converter = null ->
+        if (!proj.ext.has(name)) proj.ext.set(name, converter == null ? value : converter.call(value))
+        else if (converter) proj.ext.set(name, converter.call(proj.ext.get(name)))
+        proj.ext.get(name)
+    }
+
+    loadDefaultProjectPropertiesFromFile = {proj, fileName ->
+        file("$fileName").withInputStream { 
+            def props = new Properties()
+            props.load(it)
+
+            for (key in props.keys()) {
+                defaultProjectPropertyValue(proj, key, props.getProperty(key))
+            }
+        }
+    }
+
+}
+
+loadDefaultPropertiesFromFile("$projectDir/default.properties")
+
 docker {
     registryCredentials {
         if (project.hasProperty('dockerRegistry')) {
             url = project.dockerRegistry
         }
-        if (project.hasProperty('dockerRegistryUsername'))
+
+        if (project.hasProperty('registryUsername'))
         {
-            username = project.dockerRegistryUsername
+            username = project.registryUsername
         }
 
-        if (project.hasProperty('dockerRegistryPassword'))
+        if (project.hasProperty('registryPassword'))
         {
-            password = project.dockerRegistryPassword
+            password = project.registryPassword
         }
     }
 }
@@ -187,32 +226,36 @@ task copyDockerBuildCtx(type: Sync) {
     from shadowJar
 }
 
-task dockerDebianImage(type: DockerBuildImage, group: 'Docker', description: 'Build cass-config-builder based on Debian') {
+task buildDebianContainers(type: DockerBuildImage, group: 'Docker', description: 'Build cass-config-builder based on Debian') {
     dependsOn copyDockerBuildCtx
+
     inputDir = copyDockerBuildCtx.destinationDir
-    dockerFile = new File(inputDir.get().asFile, "debian.Dockerfile")
+    dockerFile = file "$buildDir/docker/debian.Dockerfile"
     labels.put("release", "${version}")
-    images.add("${imagePrefix}/cass-config-builder:${version}")
+    images.add "$dockerRegistry/cass-config-builder:$imageVersion-$release"
+    images.add "$dockerRegistry/cass-config-builder:$imageVersion"
 }
 
-task dockerRedHatImage(type: DockerBuildImage, group: 'Docker', description: 'Build cass-config-builder based on Red Hat') {
+task buildRedHatContainers(type: DockerBuildImage, group: 'Docker', description: 'Build cass-config-builder based on Red Hat') {
     dependsOn copyDockerBuildCtx
+
     inputDir = copyDockerBuildCtx.destinationDir
-    dockerFile = new File(inputDir.get().asFile, "redhat.Dockerfile")
+    dockerFile = file "$buildDir/docker/redhat.Dockerfile"
     labels.put("release", "${version}")
-    images.add("${imagePrefix}/cass-config-builder:${version}-ubi7")
+    images.add "$dockerRegistry/cass-config-builder:$imageVersion-ubi7-$release"
+    images.add "$dockerRegistry/cass-config-builder:$imageVersion-ubi7"
 }
 
-task dockerImages(group: 'Docker', description: 'Build cass-config-builder docker images') {
-    dependsOn dockerDebianImage
-    dependsOn dockerRedHatImage
+task buildContainers(group: 'Docker', description: 'Build cass-config-builder docker images') {
+    dependsOn buildDebianContainers
+    dependsOn buildRedHatContainers
 }
 
 task pushDockerImages(type: DockerPushImage, group: 'Docker', description: "Push Docker image to registry specified with 'dockerRegistry' property") {
-    dependsOn dockerDebianImage, dockerRedHatImage
+    dependsOn buildDebianContainers, buildRedHatContainers
 
-    images.addAll(dockerDebianImage.images.getOrNull().asList())
-    images.addAll(dockerRedHatImage.images.getOrNull().asList())
+    images.addAll(buildDebianContainers.images.getOrNull().asList())
+    images.addAll(buildRedHatContainers.images.getOrNull().asList())
 }
 
 clojureRepl {
@@ -220,9 +263,9 @@ clojureRepl {
     // add extracted server functions to the classpath
     classpath += sourceSets.main.runtimeClasspath
     forkOptions {
-        jvmArgs << "-D${project.name}.version=$version"
+        jvmArgs << "-D${project.name}.version=$imageVersion"
     }
 }
 
-assemble.dependsOn dockerImages
+assemble.dependsOn buildContainers
 check.dependsOn assemble
