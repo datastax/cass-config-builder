@@ -36,9 +36,8 @@
       :rack-name "default"
       :config-output-directory (str @helper/temp-dir)
       :definitions-location "cass-config-definitions/resources"})
-    (loop [files (.list (.toFile @helper/temp-dir))]
-      (let [current-file (first files)
-            diff-result (sh "diff"
+    (doseq [current-file (.list (.toFile @helper/temp-dir))]
+      (let [diff-result (sh "diff"
                             (str @helper/temp-dir "/" current-file)
                             (str "test/data/configs/dse-6.0.11/" current-file))]
         (is (= 0 (:exit diff-result))
