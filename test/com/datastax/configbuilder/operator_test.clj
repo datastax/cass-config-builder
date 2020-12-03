@@ -3,6 +3,7 @@
 
 (ns com.datastax.configbuilder.operator-test
   (:require [com.datastax.configbuilder.operator :as sut]
+            [com.datastax.configbuilder.test-data :as test-data]
             [com.datastax.configbuilder.test-helpers :as helper]
             [clojure.java.shell :refer [sh]]
             [clojure.test :refer :all]
@@ -22,7 +23,7 @@
         :product-version "6.0.11"
         :rack-name "default"
         :config-output-directory (str @helper/temp-dir)
-        :definitions-location "cass-config-definitions/resources"})
+        :definitions-location test-data/definitions-location})
       (is false "Malformed input was not detected")
       (catch Exception e
         (is (= "Unexpected end-of-input within/between Object entries\n at [Source: (StringReader); line: 1, column: 31]"
@@ -36,7 +37,7 @@
       :product-version "6.0.11"
       :rack-name "default"
       :config-output-directory (str @helper/temp-dir)
-      :definitions-location "cass-config-definitions/resources"})
+      :definitions-location test-data/definitions-location})
     (is (= #{} (set/difference
       #{"logback.xml" "cassandra-rackdc.properties" "cassandra-env.sh" "dse-env.sh" "cassandra.yaml" "dse.yaml" "10-write-prom.conf" "jvm.options"}
       (into #{} (.list (.toFile @helper/temp-dir))))))))
