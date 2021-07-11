@@ -46,7 +46,7 @@ Variable|Description
 ---|---
 CONFIG_FILE_DATA|See below for explanation
 CONFIG_OUTPUT_DIRECTORY|Filesystem location to place rendered files.  Defaults to /config
-DEFINITION_LOCATION|Filesystem location of the Definition Files.  Defaults to /definitions
+DEFINITIONS_LOCATION|Filesystem location of the Definition Files.  Defaults to /definitions
 POD_IP|The IP of the Kubernetes Pod
 HOST_IP|The IP of the Kubernetes worker hosting the Pod
 PRODUCT_NAME|Either "cassandra" or "dse"
