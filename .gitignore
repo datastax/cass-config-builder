@@ -1,2 +1,6 @@
 build
 .gradle
+/target
+/.idea
+/.vscode
+/.bloop
