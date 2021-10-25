@@ -92,7 +92,7 @@ dependencies {
     implementation "org.clojure:core.match:0.3.0-alpha5"
     implementation "org.clojure:core.memoize:0.5.9"
     implementation "slingshot:slingshot:0.12.2"
-    implementation "org.yaml:snakeyaml:1.23"
+    implementation "org.yaml:snakeyaml:1.26"
     implementation "cheshire:cheshire:5.8.0"
     implementation ("selmer:selmer:1.12.27") { // templating lib
         exclude module: 'hiccups'
