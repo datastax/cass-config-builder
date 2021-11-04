@@ -4,3 +4,7 @@ build
 /.idea
 /.vscode
 /.bloop
+bin/
+.classpath
+.project
+.settings/
