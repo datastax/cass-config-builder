@@ -34,7 +34,7 @@ ENTRYPOINT ["/usr/local/bin/entrypoint"]
 
 USER ${USER_UID}
 
-FROM registry.access.redhat.com/ubi7/ubi-minimal:7.9-503 AS builder-ubi
+FROM registry.access.redhat.com/ubi7/ubi-minimal:7.9 AS builder-ubi
 
 # Update the builder packages and create user
 RUN microdnf update && rm -rf /var/cache/yum && \
@@ -43,7 +43,7 @@ RUN microdnf update && rm -rf /var/cache/yum && \
 
 #############################################################
 
-FROM registry.access.redhat.com/ubi7/ubi-minimal:7.9-503 as cass-config-builder-ubi
+FROM registry.access.redhat.com/ubi7/ubi-minimal:7.9 as cass-config-builder-ubi
 
 LABEL maintainer="DataStax, Inc <info@datastax.com>"
 LABEL name="cass-config-builder"
