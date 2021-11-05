@@ -1,9 +1,13 @@
 name: Cass Config Builder Build & Deploy
 on:
   push:
-    branches: [ master ]
+    branches:
+      - master
+      - '1.0'
   pull_request:
-    branches: [ master ]
+    branches:
+      - master
+      - '1.0'
 jobs:
   build_operator_docker:
     name: Build Cass Config Builder Docker Image
