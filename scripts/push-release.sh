@@ -52,7 +52,7 @@ UBI_ARGS=(
 docker buildx build --push \
   "${DOCKERHUB_UBI_TAGS[@]}" \
   "${UBI_ARGS[@]}" \
-  --platform linux/amd64,linux/arm64 .
+  --platform linux/amd64 .
 
 docker buildx build --push \
   "${DOCKERHUB_TAGS[@]}" \

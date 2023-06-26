@@ -1,6 +1,6 @@
 # Copyright DataStax, Inc.
 # Please see the included license file for details.
-FROM --platform=${BUILDPLATFORM} maven:3.6.3-adoptopenjdk-8 as builder
+FROM --platform=${BUILDPLATFORM} maven:3.9.2-eclipse-temurin-8 as builder
 
 COPY . .
 
@@ -8,9 +8,9 @@ RUN ./gradlew copyDockerBuildCtx
 
 # The datastax base image is not multiarch presently, so we use the openjdk
 # image as our base for arm builds instead.
-FROM --platform=linux/arm64 openjdk:8u171-jdk-slim-stretch as base-arm64
+FROM --platform=linux/arm64 eclipse-temurin:8u372-b07-jdk as base-arm64
 
-FROM --platform=linux/amd64 datastax/ds-base-debian-openjdk-8:8u252-jdk-slim-buster-20200602 as base-amd64
+FROM --platform=linux/amd64 datastax/ds-base-debian-openjdk-8:latest as base-amd64
 
 FROM base-${TARGETARCH} as cass-config-builder
 
@@ -34,7 +34,7 @@ ENTRYPOINT ["/usr/local/bin/entrypoint"]
 
 USER ${USER_UID}
 
-FROM registry.access.redhat.com/ubi7/ubi-minimal:7.8 AS builder-ubi
+FROM registry.access.redhat.com/ubi7/ubi-minimal:7.9 AS builder-ubi
 
 # Update the builder packages and create user
 RUN microdnf update && rm -rf /var/cache/yum && \
@@ -43,7 +43,7 @@ RUN microdnf update && rm -rf /var/cache/yum && \
 
 #############################################################
 
-FROM registry.access.redhat.com/ubi7/ubi-minimal:7.8 as cass-config-builder-ubi
+FROM registry.access.redhat.com/ubi7/ubi-minimal:7.9 as cass-config-builder-ubi
 
 LABEL maintainer="DataStax, Inc <info@datastax.com>"
 LABEL name="cass-config-builder"
