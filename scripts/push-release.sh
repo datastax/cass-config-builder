@@ -50,6 +50,11 @@ UBI_ARGS=(
   --target cass-config-builder-ubi
 )
 
+UBI8_ARGS=(
+  "${COMMON_ARGS[@]}"
+  --target cass-config-builder-ubi-8
+)
+
 docker buildx build --push \
   "${DOCKERHUB_UBI_TAGS[@]}" \
   "${UBI_ARGS[@]}" \
@@ -57,7 +62,7 @@ docker buildx build --push \
 
 docker buildx build --push \
   "${DOCKERHUB_UBI8_TAGS[@]}" \
-  "${UBI_ARGS[@]}" \
+  "${UBI8_ARGS[@]}" \
   --platform linux/amd64,linux/arm64 .
 
 docker buildx build --push \

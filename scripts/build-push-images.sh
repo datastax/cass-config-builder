@@ -78,7 +78,13 @@ docker buildx build --load \
 docker buildx build --load \
   "${GH_UBI8_TAGS[@]}" \
   "${UBI8_ARGS[@]}" \
-  --platform linux/amd64,linux/arm64 \
+  --platform linux/amd64 \
+  .
+
+docker buildx build --load \
+  "${GH_UBI8_TAGS[@]}" \
+  "${UBI8_ARGS[@]}" \
+  --platform linux/arm64 \
   .
 
 TAGS_TO_PUSH=("${GH_ARM64_TAGS[@]}" "${GH_TAGS[@]}" "${GH_UBI_TAGS[@]}" "${GH_UBI8_TAGS[@]}")
