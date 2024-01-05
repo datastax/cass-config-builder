@@ -17,6 +17,7 @@ GH_REPOSITORY="docker.pkg.github.com/${GITHUB_REPO_OWNER}/cass-config-builder/ca
 
 GH_TAGS=(--tag "${GH_REPOSITORY}:${RELEASE_VERSION}")
 GH_UBI_TAGS=(--tag "${GH_REPOSITORY}:${RELEASE_VERSION}-ubi7")
+GH_UBI8_TAGS=(--tag "${GH_REPOSITORY}:${RELEASE_VERSION}-ubi8")
 GH_ARM64_TAGS=(--tag "${GH_REPOSITORY}:${RELEASE_VERSION}-arm64")
 
 LABELS=(
@@ -44,6 +45,11 @@ UBI_ARGS=(
   --target cass-config-builder-ubi
 )
 
+UBI8_ARGS=(
+  "${COMMON_ARGS[@]}"
+  --target cass-config-builder-ubi-8
+)
+
 # GitHub packages does not presently support multiarch images, so we
 # will have to create independent tags for each arch. This feature is
 # coming though:
@@ -69,7 +75,13 @@ docker buildx build --load \
   --platform linux/amd64 \
   .
 
-TAGS_TO_PUSH=("${GH_ARM64_TAGS[@]}" "${GH_TAGS[@]}" "${GH_UBI_TAGS[@]}")
+docker buildx build --load \
+  "${GH_UBI8_TAGS[@]}" \
+  "${UBI8_ARGS[@]}" \
+  --platform linux/amd64,linux/arm64 \
+  .
+
+TAGS_TO_PUSH=("${GH_ARM64_TAGS[@]}" "${GH_TAGS[@]}" "${GH_UBI_TAGS[@]}" "${GH_UBI8_TAGS[@]}")
 echo "Pushing tags: " "${TAGS_TO_PUSH[@]}"
 
 # Note: Every even index of TAGS_TO_PUSH will be the string '--tag'
