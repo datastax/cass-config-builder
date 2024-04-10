@@ -13,7 +13,7 @@ VERSION_NUMBER="$(cat version.txt | tr -d '[:space:]')"
 VERSION_DATE="$(date -u +%Y%m%d)"
 RELEASE_VERSION="${VERSION_NUMBER}-${VERSION_DATE}"
 
-GH_REPOSITORY="docker.pkg.github.com/${GITHUB_REPO_OWNER}/cass-config-builder/cass-config-builder"
+GH_REPOSITORY="ghcr.io/${GITHUB_REPO_OWNER}/cass-config-builder/cass-config-builder"
 
 GH_TAGS=(--tag "${GH_REPOSITORY}:${RELEASE_VERSION}")
 GH_UBI_TAGS=(--tag "${GH_REPOSITORY}:${RELEASE_VERSION}-ubi7")
