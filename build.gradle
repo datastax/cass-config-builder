@@ -41,7 +41,7 @@ repositories {
     name = 'clojars'
     url = 'https://repo.clojars.org'
   }
-  redhatEA {
+  maven {
     name = 'redhatEA'
     url = 'https://maven.repository.redhat.com/earlyaccess/all/'
   }
@@ -98,6 +98,7 @@ dependencies {
     implementation "slingshot:slingshot:0.12.2"
     implementation 'org.yaml:snakeyaml:1.33.0.SP1-redhat-00001'
     implementation "cheshire:cheshire:5.13.0"
+    implementation 'commons-codec:commons-codec:1.16.1'
     implementation ("selmer:selmer:1.12.59") { // templating lib
         exclude module: 'hiccups'
         exclude module: 'cheshire'
