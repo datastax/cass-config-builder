@@ -96,7 +96,7 @@ dependencies {
     implementation "org.clojure:core.match:1.1.0"
     implementation "org.clojure:core.memoize:1.1.266"
     implementation "slingshot:slingshot:0.12.2"
-    implementation 'org.yaml:snakeyaml:1.33.0.SP1-redhat-00001'
+    implementation 'org.yaml:snakeyaml:2.2'
     implementation "cheshire:cheshire:5.13.0"
     implementation 'commons-codec:commons-codec:1.16.1'
     implementation ("selmer:selmer:1.12.59") { // templating lib
