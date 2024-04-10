@@ -41,6 +41,10 @@ repositories {
     name = 'clojars'
     url = 'https://repo.clojars.org'
   }
+  redhatEA {
+    name = 'redhatEA'
+    url = 'https://maven.repository.redhat.com/earlyaccess/all/'
+  }
 }
 
 sourceCompatibility = 1.8
@@ -88,13 +92,13 @@ configurations {
 }
 
 dependencies {
-    implementation "org.clojure:clojure:1.10.1"
-    implementation "org.clojure:core.match:0.3.0-alpha5"
-    implementation "org.clojure:core.memoize:0.5.9"
+    implementation "org.clojure:clojure:1.11.2"
+    implementation "org.clojure:core.match:1.1.0"
+    implementation "org.clojure:core.memoize:1.1.266"
     implementation "slingshot:slingshot:0.12.2"
-    implementation "org.yaml:snakeyaml:1.23"
-    implementation "cheshire:cheshire:5.8.0"
-    implementation ("selmer:selmer:1.12.27") { // templating lib
+    implementation 'org.yaml:snakeyaml:1.33.0.SP1-redhat-00001'
+    implementation "cheshire:cheshire:5.13.0"
+    implementation ("selmer:selmer:1.12.59") { // templating lib
         exclude module: 'hiccups'
         exclude module: 'cheshire'
         exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
