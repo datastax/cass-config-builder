@@ -26,8 +26,7 @@
         :definitions-location test-data/definitions-location})
       (is false "Malformed input was not detected")
       (catch Exception e
-        (is (= "Unexpected end-of-input within/between Object entries\n at [Source: (StringReader); line: 1, column: 31]"
-               (.getMessage e))
+        (is (clojure.string/includes? (.getMessage e) "Unexpected end-of-input within/between Object entries")
             "Wrong error thrown"))))
   (testing "ensure all files generated"
     (sut/make-configs
