@@ -22,7 +22,6 @@ if ! [ "v${VERSION_NUMBER}" = "${GIT_TAG}" ]; then
 fi
 
 DOCKERHUB_TAGS=(--tag "${DOCKERHUB_REPOSITORY}:${RELEASE_VERSION}" --tag "${DOCKERHUB_REPOSITORY}:${RELEASE_MINOR_VERSION}")
-DOCKERHUB_UBI_TAGS=(--tag "${DOCKERHUB_REPOSITORY}:${RELEASE_VERSION}-ubi7" --tag "${DOCKERHUB_REPOSITORY}:${RELEASE_MINOR_VERSION}-ubi7")
 DOCKERHUB_UBI8_TAGS=(--tag "${DOCKERHUB_REPOSITORY}:${RELEASE_VERSION}-ubi8" --tag "${DOCKERHUB_REPOSITORY}:${RELEASE_MINOR_VERSION}-ubi8")
 
 LABELS=(
@@ -50,19 +49,9 @@ UBI_ARGS=(
   --target cass-config-builder-ubi
 )
 
-UBI8_ARGS=(
-  "${COMMON_ARGS[@]}"
-  --target cass-config-builder-ubi-8
-)
-
-docker buildx build --push \
-  "${DOCKERHUB_UBI_TAGS[@]}" \
-  "${UBI_ARGS[@]}" \
-  --platform linux/amd64 .
-
 docker buildx build --push \
   "${DOCKERHUB_UBI8_TAGS[@]}" \
-  "${UBI8_ARGS[@]}" \
+  "${UBI_ARGS[@]}" \
   --platform linux/amd64,linux/arm64 .
 
 docker buildx build --push \
