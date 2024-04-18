@@ -16,7 +16,7 @@ RELEASE_VERSION="${VERSION_NUMBER}-${VERSION_DATE}"
 GH_REPOSITORY="ghcr.io/${GITHUB_REPO_OWNER}/cass-config-builder/cass-config-builder"
 
 GH_TAGS=(--tag "${GH_REPOSITORY}:${RELEASE_VERSION}")
-GH_UBI_TAGS=(--tag "${GH_REPOSITORY}:${RELEASE_VERSION}-ubi")
+GH_UBI_TAGS=(--tag "${GH_REPOSITORY}:${RELEASE_VERSION}-ubi8")
 GH_ARM64_TAGS=(--tag "${GH_REPOSITORY}:${RELEASE_VERSION}-arm64")
 
 LABELS=(
@@ -55,6 +55,12 @@ docker buildx build --load \
   "${GH_UBI_TAGS[@]}" \
   "${UBI_ARGS[@]}" \
   --platform linux/amd64 \
+  .
+
+docker buildx build --load \
+  "${GH_UBI_TAGS[@]}" \
+  "${UBI_ARGS[@]}" \
+  --platform linux/arm64 \
   .
 
 docker buildx build --load \
