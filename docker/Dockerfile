@@ -35,7 +35,7 @@ USER ${USER_UID}
 
 #############################################################
 
-FROM redhat/ubi8-minimal:8.9 AS builder-ubi
+FROM redhat/ubi8-minimal:8.10 AS builder-ubi
 
 # Update the builder packages and create user
 RUN microdnf update && rm -rf /var/cache/yum && \
@@ -49,7 +49,7 @@ RUN find /definitions -type d -exec chmod 0775 {} \;
 #############################################################
 
 # Build the UBI8 image
-FROM redhat/ubi8-minimal:8.9 as cass-config-builder-ubi
+FROM redhat/ubi8-minimal:8.10 as cass-config-builder-ubi
 LABEL maintainer="DataStax, Inc <info@datastax.com>"
 LABEL name="cass-config-builder"
 LABEL vendor="DataStax, Inc"
