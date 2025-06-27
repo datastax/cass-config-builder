@@ -51,7 +51,7 @@ RUN find /definitions -type d -exec chmod 0775 {} \;
 
 #############################################################
 
-# Build the UBI10 image using Eclipse Temurin for Java runtime
+# Build the UBI image
 FROM redhat/ubi10-minimal:10.0 AS cass-config-builder-ubi
 LABEL maintainer="DataStax, Inc <info@datastax.com>"
 LABEL name="cass-config-builder"
