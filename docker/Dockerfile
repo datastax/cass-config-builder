@@ -1,6 +1,6 @@
 # Copyright DataStax, Inc.
 # Please see the included license file for details.
-FROM --platform=${BUILDPLATFORM} maven:3.9-eclipse-temurin-8 as builder
+FROM --platform=${BUILDPLATFORM} maven:3.9-eclipse-temurin-11 as builder
 
 COPY . .
 
@@ -11,7 +11,7 @@ RUN ./gradlew copyDockerBuildCtx
 
 # The datastax base image is not multiarch presently, so we use the openjdk
 # image as our base for arm builds instead.
-FROM eclipse-temurin:8-jdk as cass-config-builder
+FROM eclipse-temurin:11-jdk as cass-config-builder
 
 ENV USER_UID=1001 \
     USER_NAME=cass-operator \
@@ -35,11 +35,13 @@ USER ${USER_UID}
 
 #############################################################
 
-FROM redhat/ubi8-minimal:8.10 AS builder-ubi
+FROM redhat/ubi10-minimal:10.0 AS builder-ubi
 
-# Update the builder packages and create user
-RUN microdnf update && rm -rf /var/cache/yum && \
-    microdnf install shadow-utils findutils && microdnf clean all && \
+# Update the builder packages, install Java, and create user
+RUN microdnf update -y && \
+    rm -rf /var/cache/yum && \
+    microdnf install -y shadow-utils findutils && \
+    microdnf clean all && \
     useradd -r -s /bin/false -U -G root cassandra
 
 COPY --from=builder --chown=cassandra:root build/docker/definitions /definitions
@@ -48,8 +50,8 @@ RUN find /definitions -type d -exec chmod 0775 {} \;
 
 #############################################################
 
-# Build the UBI8 image
-FROM redhat/ubi8-minimal:8.10 AS cass-config-builder-ubi
+# Build the UBI9 image using Eclipse Temurin for Java runtime
+FROM redhat/ubi10-minimal:10.0 AS cass-config-builder-ubi
 LABEL maintainer="DataStax, Inc <info@datastax.com>"
 LABEL name="cass-config-builder"
 LABEL vendor="DataStax, Inc"
@@ -57,14 +59,11 @@ LABEL release="1.0.0"
 LABEL summary="Configuration templating engine for Apache Cassandra®."
 LABEL description="Configuration templating engine for Apache Cassandra®. Powers the configuration of containers deployed via the DataStax Kubernetes Operator for Apache Cassandra."
 
-# Update base packages
-RUN microdnf update && \
-    rm -rf /var/cache/yum && \
-    microdnf install java-1.8.0-openjdk-headless && \
-    microdnf clean all
-
-# Copy user account information
-COPY --from=builder-ubi /etc/passwd /etc/shadow /etc/group /etc/gshadow /etc/
+# Install shadow-utils and create user and group for security
+RUN microdnf update -y && \
+    microdnf install -y shadow-utils java-21-openjdk-headless && \
+    microdnf clean all && \
+    groupadd -r cassandra && useradd -r -g cassandra cassandra
 
 # Install the uber jar
 COPY --from=builder --chown=cassandra:root build/docker/*.jar /usr/local/bin/
