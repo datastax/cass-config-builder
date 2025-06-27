@@ -52,7 +52,7 @@ RUN find /definitions -type d -exec chmod 0775 {} \;
 #############################################################
 
 # Build the UBI9 image using Eclipse Temurin for Java runtime
-FROM redhat/ubi10-minimal:10.0 AS cass-config-builder-ubi
+FROM eclipse-temurin:11-jre AS cass-config-builder-ubi
 LABEL maintainer="DataStax, Inc <info@datastax.com>"
 LABEL name="cass-config-builder"
 LABEL vendor="DataStax, Inc"
@@ -60,12 +60,8 @@ LABEL release="1.0.0"
 LABEL summary="Configuration templating engine for Apache Cassandra®."
 LABEL description="Configuration templating engine for Apache Cassandra®. Powers the configuration of containers deployed via the DataStax Kubernetes Operator for Apache Cassandra."
 
-# Install shadow-utils and create user and group for security
-RUN microdnf clean all && \
-    microdnf update -y && \
-    microdnf install -y shadow-utils java-21-openjdk-headless && \
-    microdnf clean all && \
-    groupadd -r cassandra && useradd -r -g cassandra cassandra
+# Create user and group for security
+RUN groupadd -r cassandra && useradd -r -g root -G cassandra cassandra
 
 # Install the uber jar
 COPY --from=builder --chown=cassandra:root build/docker/*.jar /usr/local/bin/
