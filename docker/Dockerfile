@@ -38,9 +38,10 @@ USER ${USER_UID}
 FROM redhat/ubi10-minimal:10.0 AS builder-ubi
 
 # Update the builder packages, install Java, and create user
-RUN microdnf update -y --nogpgcheck && \
+RUN microdnf clean all && \
+    microdnf update -y && \
     rm -rf /var/cache/yum && \
-    microdnf install -y --nogpgcheck shadow-utils findutils && \
+    microdnf install -y shadow-utils findutils && \
     microdnf clean all && \
     useradd -r -s /bin/false -U -G root cassandra
 
@@ -60,8 +61,9 @@ LABEL summary="Configuration templating engine for Apache Cassandra®."
 LABEL description="Configuration templating engine for Apache Cassandra®. Powers the configuration of containers deployed via the DataStax Kubernetes Operator for Apache Cassandra."
 
 # Install shadow-utils and create user and group for security
-RUN microdnf update -y --nogpgcheck && \
-    microdnf install -y --nogpgcheck shadow-utils java-21-openjdk-headless && \
+RUN microdnf clean all && \
+    microdnf update -y && \
+    microdnf install -y shadow-utils java-21-openjdk-headless && \
     microdnf clean all && \
     groupadd -r cassandra && useradd -r -g cassandra cassandra
 
