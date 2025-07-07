@@ -54,13 +54,13 @@ UBI_ARGS=(
 docker buildx build --load \
   "${GH_UBI_TAGS[@]}" \
   "${UBI_ARGS[@]}" \
-  --platform linux/amd64 \
+  --platform linux/arm64 \
   .
 
 docker buildx build --load \
   "${GH_UBI_TAGS[@]}" \
   "${UBI_ARGS[@]}" \
-  --platform linux/arm64 \
+  --platform linux/amd64 \
   .
 
 docker buildx build --load \

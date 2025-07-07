@@ -62,7 +62,9 @@ LABEL description="Configuration templating engine for Apache Cassandra®. Power
 
 # Install shadow-utils for user management and create user and group for security
 RUN microdnf update -y && \
+    rm -rf /var/cache/yum && \
     microdnf install -y shadow-utils && \
+    microdnf install -y java-21-openjdk-headless && \
     microdnf clean all && \
     groupadd -r cassandra && useradd -r -g root -G cassandra cassandra
 
