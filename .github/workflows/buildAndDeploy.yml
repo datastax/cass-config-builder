@@ -74,7 +74,7 @@ jobs:
             -e RACK_NAME="default" \
             -e PRODUCT_VERSION="4.0.17" \
             -e PRODUCT_NAME="cassandra" \
-            -e CONFIG_FILE_DATA='{"cassandra-env-sh":{"additional-jvm-opts":["-Dcassandra.allow_alter_rf_during_range_movement=true","-Dcassandra.system_distributed_replication=dc1:3","-Dfoo=true","-Dbar"]},"cassandra-yaml":{"authenticator":"PasswordAuthenticator","authorizer":"CassandraAuthorizer","commitlog_directory":"/var/lib/cassandra/commitlog2","data_file_directories":["/var/lib/cassandra/data","/var/lib/extra/data"],"num_tokens":16,"role_manager":"CassandraRoleManager"},"cluster-info":{"name":"Weird Cluster Name","seeds":"weirdclustername-seed-service,weirdclustername-dc1-additional-seed-service"},"datacenter-info":{"graph-enabled":0,"name":"dc1","solr-enabled":0,"spark-enabled":0},"jvm-server-options":{"agent_lib_jdwp":false,"always_pre_touch":false,"cassandra_available_processors":2,"cassandra_disable_auth_caches_remote_configuration":false,"cassandra_force_default_indexing_page_size":false,"cassandra_ring_delay_ms":100,"cassandra_write_survey":false,"enable_assertions":false,"flight_recorder":false,"heap_dump_on_out_of_memory_error":false,"initial_heap_size":536870912,"java_net_prefer_ipv4_stack":true,"jmx-connection-type":"local-no-auth","jmx-port":7199,"jmx-remote-ssl":false,"jmx-remote-ssl-opts":"abc","max_heap_size":536870912,"per_thread_stack_size":262144,"perf_disable_shared_mem":false,"resize_tlb":false,"string_table_size":1048576,"unlock_commercial_features":false,"use-biased-locking":false,"use_thread_priorities":false,"use_tlb":false},"jvm11-server-options":{"conc_gc_threads":2,"g1r_set_updating_pause_time_percent":5,"garbage_collector":"G1GC","initiating_heap_occupancy_percent":75,"max_gc_pause_millis":500,"parallel_gc_threads":2}}' \
+            -e CONFIG_FILE_DATA='{"cassandra-env-sh":{"additional-jvm-opts":["-Dcassandra.allow_alter_rf_during_range_movement=true","-Dcassandra.system_distributed_replication=dc1:3","-Dfoo=true","-Dbar"]},"cassandra-yaml":{"authenticator":"TestAuthenticator","authorizer":"TestAuthorizer","commitlog_directory":"/var/lib/cassandra/commitlog2","data_file_directories":["/var/lib/cassandra/data","/var/lib/extra/data"],"num_tokens":16,"role_manager":"CassandraRoleManager"},"cluster-info":{"name":"Weird Cluster Name","seeds":"weirdclustername-seed-service,weirdclustername-dc1-additional-seed-service"},"datacenter-info":{"graph-enabled":0,"name":"dc1","solr-enabled":0,"spark-enabled":0},"jvm-server-options":{"agent_lib_jdwp":false,"always_pre_touch":false,"cassandra_available_processors":2,"cassandra_disable_auth_caches_remote_configuration":false,"cassandra_force_default_indexing_page_size":false,"cassandra_ring_delay_ms":100,"cassandra_write_survey":false,"enable_assertions":false,"flight_recorder":false,"heap_dump_on_out_of_memory_error":false,"initial_heap_size":536870912,"java_net_prefer_ipv4_stack":true,"jmx-connection-type":"local-no-auth","jmx-port":7199,"jmx-remote-ssl":false,"jmx-remote-ssl-opts":"abc","max_heap_size":536870912,"per_thread_stack_size":262144,"perf_disable_shared_mem":false,"resize_tlb":false,"string_table_size":1048576,"unlock_commercial_features":false,"use-biased-locking":false,"use_thread_priorities":false,"use_tlb":false},"jvm11-server-options":{"conc_gc_threads":2,"g1r_set_updating_pause_time_percent":5,"garbage_collector":"G1GC","initiating_heap_occupancy_percent":75,"max_gc_pause_millis":500,"parallel_gc_threads":2}}' \
             "$IMAGE_TAG"
           
           echo "Container execution completed. Checking output..."
@@ -99,14 +99,14 @@ jobs:
           echo "Checking cassandra.yaml contents..."
           
           # Check for authenticator setting
-          if ! grep -q "authenticator: PasswordAuthenticator" "$TEST_DIR/cassandra.yaml"; then
+          if ! grep -q "authenticator: TestAuthenticator" "$TEST_DIR/cassandra.yaml"; then
             echo "ERROR: authenticator not set correctly"
             cat "$TEST_DIR/cassandra.yaml"
             exit 1
           fi
           
           # Check for authorizer setting
-          if ! grep -q "authorizer: CassandraAuthorizer" "$TEST_DIR/cassandra.yaml"; then
+          if ! grep -q "authorizer: TestAuthorizer" "$TEST_DIR/cassandra.yaml"; then
             echo "ERROR: authorizer not set correctly"
             cat "$TEST_DIR/cassandra.yaml"
             exit 1
@@ -133,10 +133,112 @@ jobs:
             exit 1
           fi
           
-          echo "✅ Smoke test passed! All configuration values verified."
-          
-          # Clean up
-          rm -rf "$TEST_DIR"
+                     echo "✅ cassandra.yaml checks passed!"
+           
+           # Check if cassandra-env.sh exists
+           if [ ! -f "$TEST_DIR/cassandra-env.sh" ]; then
+             echo "ERROR: cassandra-env.sh was not generated"
+             exit 1
+           fi
+           
+           # Verify cassandra-env.sh contents
+           echo "Checking cassandra-env.sh contents..."
+           
+           # Check for additional JVM options that were specified in CONFIG_FILE_DATA
+           if ! grep -q "\-Dcassandra.allow_alter_rf_during_range_movement=true" "$TEST_DIR/cassandra-env.sh"; then
+             echo "ERROR: JVM option -Dcassandra.allow_alter_rf_during_range_movement=true not found in cassandra-env.sh"
+             cat "$TEST_DIR/cassandra-env.sh"
+             exit 1
+           fi
+           
+           if ! grep -q "\-Dcassandra.system_distributed_replication=dc1:3" "$TEST_DIR/cassandra-env.sh"; then
+             echo "ERROR: JVM option -Dcassandra.system_distributed_replication=dc1:3 not found in cassandra-env.sh"
+             cat "$TEST_DIR/cassandra-env.sh"
+             exit 1
+           fi
+           
+           if ! grep -q "\-Dfoo=true" "$TEST_DIR/cassandra-env.sh"; then
+             echo "ERROR: JVM option -Dfoo=true not found in cassandra-env.sh"
+             cat "$TEST_DIR/cassandra-env.sh"
+             exit 1
+           fi
+           
+           if ! grep -q "\-Dbar" "$TEST_DIR/cassandra-env.sh"; then
+             echo "ERROR: JVM option -Dbar not found in cassandra-env.sh"
+             cat "$TEST_DIR/cassandra-env.sh"
+             exit 1
+           fi
+           
+           echo "✅ cassandra-env.sh checks passed!"
+           
+           # Check if jvm11-server.options exists
+           if [ ! -f "$TEST_DIR/jvm11-server.options" ]; then
+             echo "ERROR: jvm11-server.options was not generated"
+             exit 1
+           fi
+           
+           # Verify jvm11-server.options contents
+           echo "Checking jvm11-server.options contents..."
+           
+           # Check for G1GC garbage collector
+           if ! grep -q "\-XX:+UseG1GC" "$TEST_DIR/jvm11-server.options"; then
+             echo "ERROR: G1GC garbage collector not configured in jvm11-server.options"
+             cat "$TEST_DIR/jvm11-server.options"
+             exit 1
+           fi
+           
+           # Check for concurrent GC threads setting
+           if ! grep -q "\-XX:ConcGCThreads=2" "$TEST_DIR/jvm11-server.options"; then
+             echo "ERROR: ConcGCThreads=2 not found in jvm11-server.options"
+             cat "$TEST_DIR/jvm11-server.options"
+             exit 1
+           fi
+           
+           # Check for parallel GC threads setting
+           if ! grep -q "\-XX:ParallelGCThreads=2" "$TEST_DIR/jvm11-server.options"; then
+             echo "ERROR: ParallelGCThreads=2 not found in jvm11-server.options"
+             cat "$TEST_DIR/jvm11-server.options"
+             exit 1
+           fi
+           
+           # Check for G1 heap occupancy percent
+           if ! grep -q "\-XX:G1HeapRegionSize" "$TEST_DIR/jvm11-server.options" || ! grep -q "\-XX:InitiatingHeapOccupancyPercent=75" "$TEST_DIR/jvm11-server.options"; then
+             echo "ERROR: G1 heap occupancy settings not configured correctly in jvm11-server.options"
+             cat "$TEST_DIR/jvm11-server.options"
+             exit 1
+           fi
+           
+           # Check for max GC pause time
+           if ! grep -q "\-XX:MaxGCPauseMillis=500" "$TEST_DIR/jvm11-server.options"; then
+             echo "ERROR: MaxGCPauseMillis=500 not found in jvm11-server.options"
+             cat "$TEST_DIR/jvm11-server.options"
+             exit 1
+           fi
+           
+           # Check for G1 R Set updating pause time percent
+           if ! grep -q "\-XX:G1RSetUpdatingPauseTimePercent=5" "$TEST_DIR/jvm11-server.options"; then
+             echo "ERROR: G1RSetUpdatingPauseTimePercent=5 not found in jvm11-server.options"
+             cat "$TEST_DIR/jvm11-server.options"
+             exit 1
+           fi
+           
+           echo "✅ jvm11-server.options checks passed!"
+           
+           # Additional validation - check that all expected files were generated
+           echo "Verifying all expected configuration files were generated..."
+           expected_files=("cassandra.yaml" "cassandra-env.sh" "jvm11-server.options")
+           
+           for file in "${expected_files[@]}"; do
+             if [ ! -f "$TEST_DIR/$file" ]; then
+               echo "ERROR: Expected file $file was not generated"
+               exit 1
+             fi
+           done
+           
+           echo "✅ All smoke tests passed! Configuration generation verified successfully."
+           
+           # Clean up
+           rm -rf "$TEST_DIR"
       - name: Archive build logs
         if: ${{ failure() }}
         uses: actions/upload-artifact@v4
