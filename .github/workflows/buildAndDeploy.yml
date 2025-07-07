@@ -67,6 +67,7 @@ jobs:
           
           # Run the container with the specified environment variables
           docker run --rm \
+            --platform linux/amd64 \
             -v "$TEST_DIR:/config" \
             -e POD_IP="10.244.1.5" \
             -e HOST_IP="192.168.1.100" \
