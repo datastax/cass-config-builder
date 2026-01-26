@@ -35,7 +35,7 @@ USER ${USER_UID}
 
 #############################################################
 
-FROM redhat/ubi10-minimal:10 AS builder-ubi
+FROM redhat/ubi10-minimal:latest AS builder-ubi
 
 # Update the builder packages, install Java, and create user
 RUN microdnf clean all && \
@@ -52,7 +52,7 @@ RUN find /definitions -type d -exec chmod 0775 {} \;
 #############################################################
 
 # Build the UBI image
-FROM redhat/ubi10-minimal:10 AS cass-config-builder-ubi
+FROM redhat/ubi10-minimal:latest AS cass-config-builder-ubi
 LABEL maintainer="DataStax, Inc <info@datastax.com>"
 LABEL name="cass-config-builder"
 LABEL vendor="DataStax, Inc"
