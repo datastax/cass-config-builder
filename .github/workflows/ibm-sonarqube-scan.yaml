@@ -1,0 +1,135 @@
+name: IBM SonarQube Scan
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  sonarqube-scan:
+    name: IBM SonarQube Scan
+    runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.IBM_SONARQUBE_API_TOKEN }}
+      PROJECT_KEY: 544478-247164334
+      PROJECT_NAME: cass-config-builder
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        if: github.event_name == 'pull_request'
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          submodules: true
+          fetch-depth: 0
+
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        if: github.event_name != 'pull_request'
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Set up Java 8
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '8'
+
+      - name: Set up Clojure CLI
+        uses: DeLaGuardo/setup-clojure@13.0
+        with:
+          cli: latest
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Cache Gradle and Clojure dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.m2/repository
+            ~/.clojure
+            ~/.gitlibs
+          key: ${{ runner.os }}-gradle-clojure-${{ hashFiles('build.gradle', 'settings.gradle') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-clojure-
+
+      - name: Run tests
+        run: ./gradlew test
+        env:
+          definitions.location: cass-config-definitions/resources/config-schema
+
+      - name: Generate coverage report with cloverage
+        run: |
+          # Export the full test runtime classpath using the Gradle helper task
+          ./gradlew exportTestClasspath
+          CLASSPATH=$(cat build/test-classpath.txt)
+
+          # Run cloverage against all source and test namespaces
+          clojure \
+            -Sdeps '{:deps {cloverage/cloverage {:mvn/version "1.2.4"}}}' \
+            -Scp "$CLASSPATH" \
+            -m cloverage.coverage \
+            --output "build/reports/cloverage" \
+            --clover-output "build/reports/clover.xml" \
+            --junit-output "build/reports/cloverage/junit.xml" \
+            --ns-regex "com\.datastax\..*" \
+            --ns-regex "lcm\.utils\..*" \
+            --test-ns-regex ".*-test$" \
+            || true
+
+      - name: Upload coverage report as artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cloverage-report
+          path: build/reports/cloverage/
+
+      - name: Create trust-store from secret
+        run: |
+          echo "${{ secrets.IBM_SONARQUBE_CERT_TRUSTSTORE_BASE64 }}" | base64 -d > ibm_cert_truststore
+
+      - name: SonarQube scan on push/master
+        if: github.event_name != 'pull_request'
+        uses: SonarSource/sonarqube-scan-action@v5.2.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: >
+            -D sonar.projectKey=$PROJECT_KEY
+            -D sonar.projectName=$PROJECT_NAME
+            -D sonar.sources=src
+            -D sonar.tests=test
+            -D sonar.sourceEncoding=UTF-8
+            -D sonar.clover.reportPath=build/reports/clover.xml
+            -D sonar.host.url=https://sonarqube-prod.whitewater.ibm.com
+            -D sonar.token=${{ secrets.IBM_SONARQUBE_API_TOKEN }}
+            -D sonar.branch.name=${{ github.ref_name }}
+            -D sonar.scanner.truststorePath=./ibm_cert_truststore
+            -D sonar.scanner.truststorePassword=${{ secrets.IBM_SONARQUBE_CERT_PASSWORD }}
+
+      - name: SonarQube scan on PR
+        if: github.event_name == 'pull_request'
+        uses: SonarSource/sonarqube-scan-action@v5.2.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: >
+            -D sonar.projectKey=$PROJECT_KEY
+            -D sonar.projectName=$PROJECT_NAME
+            -D sonar.sources=src
+            -D sonar.tests=test
+            -D sonar.sourceEncoding=UTF-8
+            -D sonar.clover.reportPath=build/reports/clover.xml
+            -D sonar.host.url=https://sonarqube-prod.whitewater.ibm.com
+            -D sonar.token=${{ secrets.IBM_SONARQUBE_API_TOKEN }}
+            -D sonar.pullrequest.key=${{ github.event.number }}
+            -D sonar.pullrequest.branch=${{ github.head_ref }}
+            -D sonar.pullrequest.base=${{ github.base_ref }}
+            -D sonar.scanner.truststorePath=./ibm_cert_truststore
+            -D sonar.scanner.truststorePassword=${{ secrets.IBM_SONARQUBE_CERT_PASSWORD }}

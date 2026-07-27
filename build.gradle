@@ -174,3 +174,14 @@ clojureRepl {
 }
 
 check.dependsOn assemble
+
+// Exports the full test runtime classpath to a file for use by cloverage
+task exportTestClasspath {
+    doLast {
+        def cp = (sourceSets.test.runtimeClasspath + sourceSets.main.runtimeClasspath)
+            .filter { it.exists() }
+            .asPath
+        new File("${buildDir}/test-classpath.txt").text = cp
+    }
+}
+exportTestClasspath.dependsOn testClasses
