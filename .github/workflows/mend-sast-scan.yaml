@@ -1,0 +1,46 @@
+name: 🔬 Mend CLI SAST
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+# Fixed values that do not vary per environment.
+env:
+  MEND_PROJECTNAME: "Cass Config Builder"
+  MEND_URL: "https://ibmets.whitesourcesoftware.com"
+  MEND_REPORT: "mend-results.json"
+
+jobs:
+  mend-sast-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      # Download the Mend CLI binary for Linux/amd64.
+      - name: Download Mend CLI
+        run: |
+          curl https://downloads.mend.io/cli/linux_amd64/mend -o ./mend
+          chmod +x ./mend
+
+      # Run the Mend dependency scan.
+      # Secrets are injected as env vars scoped to this step only.
+      - name: Run Mend sast scan
+        env:
+          MEND_USER_KEY: ${{ secrets.MEND_USER_KEY }}
+          MEND_PRODUCTNAME: ${{ secrets.MEND_PRODUCTNAME }}
+          MEND_ORGNAME: Products
+          MEND_EMAIL: ${{ secrets.MEND_EMAIL }}
+        run: |
+          ./mend sast --dir . \
+            --scope "$MEND_ORGNAME//$MEND_PRODUCTNAME//$MEND_PROJECTNAME"
+
+      # Upload the exported report so it is accessible from the workflow run.
+      - name: Upload Mend scan report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mend-scan-report
+          path: ${{ env.MEND_REPORT }}
