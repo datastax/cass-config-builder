@@ -12,7 +12,7 @@ VERSION_NUMBER="$(cat version.txt | tr -d '[:space:]')"
 RELEASE_VERSION="${VERSION_NUMBER}"
 RELEASE_MINOR_VERSION="$(echo ${RELEASE_VERSION} | cut -d "." -f 1-2)"
 
-GHCR_REPOSITORY="ghcr.io/${GITHUB_REPO_OWNER}/cass-config-builder/cass-config-builder"
+GHCR_REPOSITORY="ghcr.io/${GITHUB_REPO_OWNER}/cass-config-builder"
 
 # Make sure the version number of the project aligns with
 # the tag that we have to prevent confusion.
