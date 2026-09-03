@@ -1,3 +1,12 @@
+> **⚠️ Image Registry Migration Notice**
+> Starting from `v1.0.22`, Docker images are no longer published to Docker Hub.
+> All images are now published exclusively to GitHub Container Registry (GHCR).
+>
+> **New image path:** `ghcr.io/datastax/cass-config-builder:<tag>`
+>
+> Images previously published to Docker Hub remain available at `docker.io/datastax/cass-config-builder:<tag>` but will not receive any new releases.
+> Please update your image references to the new path when upgrading to `v1.0.22` or later.
+
 # Introduction
 
 The cass-config-builder can be consumed as either a jar artifact or inside of a Docker image.
@@ -36,7 +45,7 @@ mavenRepositoryPassword|  Password for publishing
 
 # Build the Docker image
 
-Docker images are built automatically and pushed to GitHub packages for pushes to master and PRs against master. When creating a release tag (e.g. v1.2.0) an image is produced and pushed to DockerHub.
+Docker images are built automatically and pushed to GitHub Container Registry (GHCR) for pushes to master and PRs against master. When creating a release tag (e.g. v1.2.0) a release image is produced and pushed to GHCR.
 
 # Using the cass-config-builder docker image
 

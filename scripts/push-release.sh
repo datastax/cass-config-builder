@@ -3,6 +3,7 @@
 # Expected ENV variable inputs:
 #
 # GITHUB_REPO_URL - the GitHub repository url (i.e. https://github.com/datastax/cass-operator)
+# GITHUB_REPO_OWNER - the owner of the repository (i.e. datastax)
 # GITHUB_REF - the git ref of the tag
 # GITHUB_SHA - the git SHA of the current checkout
 #
@@ -11,7 +12,7 @@ VERSION_NUMBER="$(cat version.txt | tr -d '[:space:]')"
 RELEASE_VERSION="${VERSION_NUMBER}"
 RELEASE_MINOR_VERSION="$(echo ${RELEASE_VERSION} | cut -d "." -f 1-2)"
 
-DOCKERHUB_REPOSITORY="datastax/cass-config-builder"
+GHCR_REPOSITORY="ghcr.io/${GITHUB_REPO_OWNER}/cass-config-builder"
 
 # Make sure the version number of the project aligns with
 # the tag that we have to prevent confusion.
@@ -21,8 +22,8 @@ if ! [ "v${VERSION_NUMBER}" = "${GIT_TAG}" ]; then
   exit 1
 fi
 
-DOCKERHUB_TAGS=(--tag "${DOCKERHUB_REPOSITORY}:${RELEASE_VERSION}" --tag "${DOCKERHUB_REPOSITORY}:${RELEASE_MINOR_VERSION}")
-DOCKERHUB_UBI_TAGS=(--tag "${DOCKERHUB_REPOSITORY}:${RELEASE_VERSION}-ubi" --tag "${DOCKERHUB_REPOSITORY}:${RELEASE_MINOR_VERSION}-ubi" --tag "${DOCKERHUB_REPOSITORY}:${RELEASE_VERSION}-ubi10" --tag "${DOCKERHUB_REPOSITORY}:${RELEASE_MINOR_VERSION}-ubi10")
+GHCR_TAGS=(--tag "${GHCR_REPOSITORY}:${RELEASE_VERSION}" --tag "${GHCR_REPOSITORY}:${RELEASE_MINOR_VERSION}")
+GHCR_UBI_TAGS=(--tag "${GHCR_REPOSITORY}:${RELEASE_VERSION}-ubi" --tag "${GHCR_REPOSITORY}:${RELEASE_MINOR_VERSION}-ubi" --tag "${GHCR_REPOSITORY}:${RELEASE_VERSION}-ubi10" --tag "${GHCR_REPOSITORY}:${RELEASE_MINOR_VERSION}-ubi10")
 
 LABELS=(
   --label "release=$RELEASE_VERSION"
@@ -50,11 +51,11 @@ UBI_ARGS=(
 )
 
 docker buildx build --push \
-  "${DOCKERHUB_UBI_TAGS[@]}" \
+  "${GHCR_UBI_TAGS[@]}" \
   "${UBI_ARGS[@]}" \
   --platform linux/amd64,linux/arm64 .
 
 docker buildx build --push \
-  "${DOCKERHUB_TAGS[@]}" \
+  "${GHCR_TAGS[@]}" \
   "${STANDARD_ARGS[@]}" \
   --platform linux/amd64,linux/arm64 .
