@@ -98,6 +98,9 @@ dependencies {
     compile "slingshot:slingshot:0.12.2"
     compile 'org.yaml:snakeyaml:2.2'
     compile "cheshire:cheshire:5.13.0"
+    compile "com.fasterxml.jackson.core:jackson-core:2.22.4"
+    compile "com.fasterxml.jackson.dataformat:jackson-dataformat-smile:2.22.4"
+    compile "com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.22.4"
     compile 'commons-codec:commons-codec:1.16.1'
     compile ("selmer:selmer:1.12.59") { // templating lib
         exclude module: 'hiccups'
